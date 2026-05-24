@@ -1,9 +1,9 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { LogBox, useColorScheme } from 'react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { SplashScreen as SplashScreenComponent } from '@/components/splash-screen';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 
 // Suppress known Expo Router internal warning about state update before mount.
@@ -63,17 +63,47 @@ function RootLayoutNav() {
 }
 
 /**
+ * Inner component that has access to AuthContext so it can wire
+ * `isReady={!loading}` to the SplashScreen component.
+ * Requirements: 1.10, 1.12
+ */
+function RootLayoutInner({
+  splashDone,
+  onSplashDone,
+}: {
+  splashDone: boolean;
+  onSplashDone: () => void;
+}) {
+  const { loading } = useAuth();
+
+  return (
+    <>
+      <RootLayoutNav />
+      {!splashDone && (
+        <SplashScreenComponent
+          isReady={!loading}
+          onAnimationComplete={onSplashDone}
+        />
+      )}
+    </>
+  );
+}
+
+/**
  * Root layout: wraps the entire app with AuthProvider and ThemeProvider.
  * Requirements: 3.2, 3.3, 3.4
  */
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [splashDone, setSplashDone] = useState(false);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthProvider>
-        <AnimatedSplashOverlay />
-        <RootLayoutNav />
+        <RootLayoutInner
+          splashDone={splashDone}
+          onSplashDone={() => setSplashDone(true)}
+        />
       </AuthProvider>
     </ThemeProvider>
   );

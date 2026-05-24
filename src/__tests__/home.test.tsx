@@ -1,91 +1,119 @@
 /**
- * Unit tests for src/app/(tabs)/index.tsx (HomeScreen)
- * Requirements: 4.6, 4.7
+ * Integration tests for src/app/(tabs)/index.tsx (HomeScreen)
+ * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9
  *
  * Tests:
- * - Menampilkan displayName jika tersedia
- * - Menampilkan email sebagai fallback jika displayName null
- * - Menampilkan komponen image saat photoURL non-null
- * - Menampilkan avatar placeholder saat photoURL null
+ * - Renders HomeHeader
+ * - Renders HeroIllustration
+ * - Renders "Belum ada pohon keluarga" heading
+ * - Renders description text
+ * - Renders "Buat Sekarang" PrimaryButton
+ * - PrimaryButton onPress is invokable (placeholder handler)
  */
 
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
-// expo-image: mock Image component so it renders in Jest (no native module needed)
-jest.mock('expo-image', () => {
+// react-native-reanimated: mock Animated.View and entering props
+jest.mock('react-native-reanimated', () => {
   const React = require('react');
-  const { Image } = require('react-native');
+  const { View } = require('react-native');
   return {
-    Image: (props: object) => <Image {...props} />,
+    __esModule: true,
+    default: {
+      View: ({ children, style }: { children?: React.ReactNode; style?: object }) =>
+        React.createElement(View, { style }, children),
+    },
+    FadeInDown: {
+      duration: () => ({ duration: jest.fn() }),
+    },
   };
 });
 
 // react-native-safe-area-context: render children directly
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
+  const { View } = require('react-native');
   return {
-    SafeAreaView: ({ children, style }: { children: React.ReactNode; style?: object }) => {
-      const { View } = require('react-native');
-      return <View style={style}>{children}</View>;
-    },
+    SafeAreaView: ({ children, style }: { children: React.ReactNode; style?: object }) =>
+      React.createElement(View, { style }, children),
     useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
   };
 });
 
-// firebase/app and firebase/auth: minimal mocks so lib/firebase.ts can load
-jest.mock('firebase/app', () => ({
-  initializeApp: jest.fn(() => ({ name: '[DEFAULT]' })),
-  getApps: jest.fn(() => []),
-  getApp: jest.fn(() => ({ name: '[DEFAULT]' })),
-}));
-jest.mock('firebase/auth', () => ({
-  initializeAuth: jest.fn(() => ({})),
-  getReactNativePersistence: jest.fn(() => ({})),
-  onAuthStateChanged: jest.fn(() => jest.fn()),
-  signInWithCredential: jest.fn(),
-  signOut: jest.fn(),
-  GoogleAuthProvider: { credential: jest.fn() },
-}));
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  __esModule: true,
-  default: { getItem: jest.fn(), setItem: jest.fn(), removeItem: jest.fn() },
-}));
-jest.mock('@react-native-google-signin/google-signin');
+// @expo/vector-icons: mock Ionicons
+jest.mock('@expo/vector-icons', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return {
+    Ionicons: ({ name, testID }: { name: string; testID?: string }) =>
+      React.createElement(Text, { testID: testID ?? `icon-${name}` }, name),
+  };
+});
 
-// ── useAuth mock — controlled per test ───────────────────────────────────────
+// HomeHeader: render a simple View with testID
+jest.mock('@/components/home-header', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    HomeHeader: ({ actionIcon }: { actionIcon?: string }) =>
+      React.createElement(View, { testID: 'home-header', accessibilityLabel: actionIcon }),
+  };
+});
 
-const mockUseAuth = jest.fn();
+// HeroIllustration: render a simple View with testID
+jest.mock('@/components/hero-illustration', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    HeroIllustration: () => React.createElement(View, { testID: 'hero-illustration' }),
+  };
+});
 
-jest.mock('@/context/auth-context', () => ({
-  useAuth: () => mockUseAuth(),
-}));
+// PrimaryButton: render a Pressable with testID and label text
+jest.mock('@/components/primary-button', () => {
+  const React = require('react');
+  const { Pressable, Text } = require('react-native');
+  return {
+    PrimaryButton: ({
+      label,
+      onPress,
+      variant,
+    }: {
+      label: string;
+      onPress: () => void;
+      variant?: string;
+    }) =>
+      React.createElement(
+        Pressable,
+        { testID: 'primary-button', onPress, accessibilityLabel: label, accessibilityHint: variant },
+        React.createElement(Text, null, label)
+      ),
+  };
+});
+
+// ThemedText: render plain Text
+jest.mock('@/components/themed-text', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return {
+    ThemedText: ({
+      children,
+      style,
+      testID,
+    }: {
+      children?: React.ReactNode;
+      style?: object;
+      testID?: string;
+    }) => React.createElement(Text, { style, testID }, children),
+  };
+});
 
 // ── Import component under test ───────────────────────────────────────────────
 
 import HomeScreen from '../app/(tabs)/index';
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function buildUser(overrides: {
-  displayName?: string | null;
-  email?: string | null;
-  photoURL?: string | null;
-}) {
-  return {
-    uid: 'test-uid',
-    email: overrides.email !== undefined ? overrides.email : 'user@example.com',
-    displayName: overrides.displayName !== undefined ? overrides.displayName : null,
-    photoURL: overrides.photoURL !== undefined ? overrides.photoURL : null,
-  };
-}
-
-function renderHome(user: ReturnType<typeof buildUser> | null = null) {
-  mockUseAuth.mockReturnValue({ user, loading: false, signInWithGoogle: jest.fn(), signOut: jest.fn() });
-  return render(<HomeScreen />);
-}
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -94,89 +122,51 @@ describe('HomeScreen', () => {
     jest.clearAllMocks();
   });
 
-  // ── Requirement 4.6: displayName jika tersedia ───────────────────────────────
+  // ── Requirement 3.1: HomeHeader ───────────────────────────────────────────
 
-  describe('Requirement 4.6 — menampilkan displayName jika tersedia', () => {
-    it('menampilkan displayName ketika displayName non-null', () => {
-      const user = buildUser({ displayName: 'John Doe', email: 'john@example.com' });
-      const { getByTestId } = renderHome(user);
-
-      expect(getByTestId('user-name').props.children).toBe('John Doe');
-    });
-
-    it('menampilkan displayName bukan email ketika keduanya tersedia', () => {
-      const user = buildUser({ displayName: 'Jane Smith', email: 'jane@example.com' });
-      const { getByTestId, queryByText } = renderHome(user);
-
-      expect(getByTestId('user-name').props.children).toBe('Jane Smith');
-      expect(queryByText('jane@example.com')).toBeNull();
-    });
+  it('renders HomeHeader', () => {
+    const { getByTestId } = render(<HomeScreen />);
+    expect(getByTestId('home-header')).toBeTruthy();
   });
 
-  // ── Requirement 4.6: email sebagai fallback jika displayName null ─────────────
+  // ── Requirement 3.2: HeroIllustration ────────────────────────────────────
 
-  describe('Requirement 4.6 — menampilkan email sebagai fallback jika displayName null', () => {
-    it('menampilkan email ketika displayName null', () => {
-      const user = buildUser({ displayName: null, email: 'fallback@example.com' });
-      const { getByTestId } = renderHome(user);
-
-      expect(getByTestId('user-name').props.children).toBe('fallback@example.com');
-    });
-
-    it('tidak menampilkan user-name ketika displayName dan email keduanya null', () => {
-      const user = buildUser({ displayName: null, email: null });
-      const { queryByTestId } = renderHome(user);
-
-      expect(queryByTestId('user-name')).toBeNull();
-    });
+  it('renders HeroIllustration', () => {
+    const { getByTestId } = render(<HomeScreen />);
+    expect(getByTestId('hero-illustration')).toBeTruthy();
   });
 
-  // ── Requirement 4.7: komponen image saat photoURL non-null ───────────────────
+  // ── Requirement 3.3: heading text ────────────────────────────────────────
 
-  describe('Requirement 4.7 — menampilkan komponen image saat photoURL non-null', () => {
-    it('merender profile-image ketika photoURL tersedia', () => {
-      const user = buildUser({ photoURL: 'https://example.com/photo.jpg' });
-      const { getByTestId, queryByTestId } = renderHome(user);
-
-      expect(getByTestId('profile-image')).toBeTruthy();
-      expect(queryByTestId('avatar-placeholder')).toBeNull();
-    });
-
-    it('profile-image menggunakan photoURL sebagai source uri', () => {
-      const photoURL = 'https://example.com/avatar.png';
-      const user = buildUser({ photoURL });
-      const { getByTestId } = renderHome(user);
-
-      const image = getByTestId('profile-image');
-      expect(image.props.source).toEqual({ uri: photoURL });
-    });
+  it('renders "Belum ada pohon keluarga" heading', () => {
+    const { getByText } = render(<HomeScreen />);
+    expect(getByText('Belum ada pohon keluarga')).toBeTruthy();
   });
 
-  // ── Requirement 4.7: avatar placeholder saat photoURL null ───────────────────
+  // ── Requirement 3.4: description text ────────────────────────────────────
 
-  describe('Requirement 4.7 — menampilkan avatar placeholder saat photoURL null', () => {
-    it('merender avatar-placeholder ketika photoURL null', () => {
-      const user = buildUser({ photoURL: null });
-      const { getByTestId, queryByTestId } = renderHome(user);
+  it('renders description text', () => {
+    const { getByText } = render(<HomeScreen />);
+    expect(
+      getByText(
+        'Mulai buat pohon keluarga Anda dan hubungkan dengan anggota keluarga lainnya'
+      )
+    ).toBeTruthy();
+  });
 
-      expect(getByTestId('avatar-placeholder')).toBeTruthy();
-      expect(queryByTestId('profile-image')).toBeNull();
-    });
+  // ── Requirement 3.5: PrimaryButton with correct label ────────────────────
 
-    it('merender avatar-placeholder ketika user null', () => {
-      const { getByTestId, queryByTestId } = renderHome(null);
+  it('renders "Buat Sekarang" PrimaryButton', () => {
+    const { getByText } = render(<HomeScreen />);
+    expect(getByText('Buat Sekarang')).toBeTruthy();
+  });
 
-      expect(getByTestId('avatar-placeholder')).toBeTruthy();
-      expect(queryByTestId('profile-image')).toBeNull();
-    });
+  // ── Requirement 3.9: PrimaryButton onPress is invokable ──────────────────
 
-    it('avatar-placeholder menampilkan inisial dari displayName', () => {
-      const user = buildUser({ displayName: 'Alice', photoURL: null });
-      const { getByTestId } = renderHome(user);
-
-      const placeholder = getByTestId('avatar-placeholder');
-      // The initial letter should appear somewhere inside the placeholder subtree
-      expect(placeholder).toBeTruthy();
-    });
+  it('PrimaryButton onPress is invokable (placeholder handler)', () => {
+    const { getByTestId } = render(<HomeScreen />);
+    const button = getByTestId('primary-button');
+    // Should not throw when pressed
+    expect(() => fireEvent.press(button)).not.toThrow();
   });
 });

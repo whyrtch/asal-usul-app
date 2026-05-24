@@ -3,8 +3,6 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
-import '@/global.css';
-
 import { Platform } from 'react-native';
 
 export const Colors = {
@@ -63,3 +61,57 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 90, android: 100 }) ?? 0;
 export const MaxContentWidth = 800;
+
+// ─── AsalUsul Brand Tokens ────────────────────────────────────────────────────
+
+export const AsalUsulColors = {
+  // Backgrounds
+  backgroundWarm:    '#F5F0E8',
+  backgroundCard:    '#FDFAF4',
+  backgroundOverlay: '#EDE8DC',
+
+  // Brand
+  primary:           '#1B4332',
+  primaryLight:      '#2D6A4F',
+  primaryMuted:      '#52796F',
+
+  // Text
+  textHeading:       '#1A1A1A',
+  textBody:          '#3D3D3D',
+  textMuted:         '#8A8070',
+  textOnPrimary:     '#FFFFFF',
+
+  // Decorative
+  goldAccent:        '#C9A84C',
+  borderSubtle:      '#E0D9CC',
+} as const;
+
+export type AsalUsulColor = keyof typeof AsalUsulColors;
+
+export const Radii = {
+  sm:   8,
+  md:   16,
+  lg:   24,
+  pill: 999,
+} as const;
+
+export type RadiusToken = keyof typeof Radii;
+
+export const Shadows = {
+  card: {
+    shadowColor:   '#1B4332',
+    shadowOffset:  { width: 0, height: 4 },
+    shadowOpacity: 0.10,
+    shadowRadius:  12,
+    elevation:     6,
+  },
+  button: {
+    shadowColor:   '#1B4332',
+    shadowOffset:  { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius:  16,
+    elevation:     8,
+  },
+} as const;
+
+export type ShadowToken = keyof typeof Shadows;

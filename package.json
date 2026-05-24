@@ -1,5 +1,5 @@
 {
-  "name": "auth-fb-boilerplate",
+  "name": "asalusul",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
@@ -49,7 +49,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "jest --watchAll=false"
+    "test": "jest --watchAll=false",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "private": true
 }

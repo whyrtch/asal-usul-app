@@ -1,111 +1,84 @@
 /**
- * HomeScreen — Displays authenticated user's profile info.
- * Requirements: 4.1, 4.4, 4.6, 4.7
+ * HomeScreen — Empty state layout with animations.
+ * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 6.7, 6.8, 6.9
  */
 
-import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HeroIllustration } from '@/components/hero-illustration';
+import { HomeHeader } from '@/components/home-header';
+import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useAuth } from '@/context/auth-context';
-import { useTheme } from '@/hooks/use-theme';
-
-/** Size of the profile photo / avatar placeholder in dp. */
-const AVATAR_SIZE = 80;
+import { AsalUsulColors } from '@/constants/theme';
 
 export default function HomeScreen() {
-  const { user } = useAuth();
-  const theme = useTheme();
-
-  // Requirements 4.6: displayName if non-null, email as fallback
-  const displayLabel = user?.displayName ?? user?.email ?? null;
-
-  // Requirements 4.7: show photo if photoURL is non-null, else placeholder
-  const hasPhoto = user?.photoURL != null;
-
-  // Derive initials for the avatar placeholder (first letter of displayName or email)
-  const initial = (user?.displayName ?? user?.email ?? '?').charAt(0).toUpperCase();
-
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
-        {/* ── Profile section ──────────────────────────────────────────── */}
-        <View style={styles.profileSection}>
-          {/* Profile photo or avatar placeholder — Requirements: 4.7 */}
-          {hasPhoto ? (
-            <Image
-              testID="profile-image"
-              source={{ uri: user!.photoURL! }}
-              style={styles.avatar}
-              contentFit="cover"
-              accessibilityLabel="Profile photo"
-              accessibilityRole="image"
-            />
-          ) : (
-            <View
-              testID="avatar-placeholder"
-              style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: theme.backgroundElement }]}
-              accessibilityLabel="Avatar placeholder"
-              accessibilityRole="image"
-            >
-              <ThemedText type="subtitle" style={styles.avatarInitial}>
-                {initial}
-              </ThemedText>
-            </View>
-          )}
+        {/* ── Header ─────────────────────────────────────────────────── */}
+        <HomeHeader actionIcon="notifications-outline" />
 
-          {/* User name / email — Requirements: 4.6 */}
-          {displayLabel !== null && (
-            <ThemedText
-              testID="user-name"
-              type="subtitle"
-              style={styles.userName}
-            >
-              {displayLabel}
+        {/* ── Empty state content ─────────────────────────────────────── */}
+        <View style={styles.content}>
+          {/* Hero illustration — Requirement 3.2, 3.6 */}
+          <Animated.View entering={FadeInDown.duration(400)}>
+            <HeroIllustration />
+          </Animated.View>
+
+          {/* Heading — Requirement 3.3, 3.6 */}
+          <Animated.View entering={FadeInDown.duration(400)}>
+            <ThemedText type="subtitle" style={styles.heading}>
+              Belum ada pohon keluarga
             </ThemedText>
-          )}
+          </Animated.View>
+
+          {/* Description — Requirement 3.4, 3.6 */}
+          <Animated.View entering={FadeInDown.duration(400)}>
+            <ThemedText type="default" style={styles.description}>
+              Mulai buat pohon keluarga Anda dan hubungkan dengan anggota keluarga lainnya
+            </ThemedText>
+          </Animated.View>
+
+          {/* CTA button — Requirement 3.5, 3.6, 3.9 */}
+          <Animated.View entering={FadeInDown.duration(400)} style={styles.buttonWrapper}>
+            <PrimaryButton
+              variant="filled"
+              label="Buat Sekarang"
+              onPress={() => {}}
+            />
+          </Animated.View>
         </View>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: AsalUsulColors.backgroundWarm,
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
+  },
+  content: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: 24,
+    gap: 24,
   },
-  profileSection: {
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
-  },
-  avatarPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: {
-    lineHeight: AVATAR_SIZE,
+  heading: {
     textAlign: 'center',
+    color: AsalUsulColors.textHeading,
   },
-  userName: {
+  description: {
     textAlign: 'center',
+    color: AsalUsulColors.textMuted,
+  },
+  buttonWrapper: {
+    width: '100%',
   },
 });

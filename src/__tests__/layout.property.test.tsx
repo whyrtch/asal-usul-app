@@ -27,9 +27,15 @@ jest.mock('expo-splash-screen', () => ({
   hideAsync: jest.fn().mockResolvedValue(true),
 }));
 
-// Mock AnimatedSplashOverlay so it renders nothing in tests
+// Mock AnimatedSplashOverlay so it renders nothing in tests (legacy — kept for safety)
 jest.mock('@/components/animated-icon', () => ({
   AnimatedSplashOverlay: () => null,
+}));
+
+// Mock SplashScreen component so it renders nothing in tests
+// (avoids pulling in react-native-reanimated which requires native Worklets init)
+jest.mock('@/components/splash-screen', () => ({
+  SplashScreen: () => null,
 }));
 
 // Mock AuthProvider so we can inject arbitrary auth state

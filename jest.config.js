@@ -7,6 +7,8 @@ const config = {
   moduleNameMapper: {
     // Stub out CSS imports — Jest cannot parse raw CSS files
     '\\.css$': '<rootDir>/__mocks__/fileMock.js',
+    // Stub out asset files (images, fonts, etc.) that Jest cannot process
+    '^@/assets/(.*)$': '<rootDir>/__mocks__/fileMock.js',
   },
 };
 
