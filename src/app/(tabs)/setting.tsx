@@ -1,136 +1,109 @@
 /**
- * SettingScreen — Logout entry point.
+ * SettingScreen — Redesigned settings page.
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
  */
 
-import { useState } from 'react';
-import {
-    ActivityIndicator,
-    Pressable,
-    StyleSheet,
-    View,
-} from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LogoHeader } from '@/components/logo-header';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { LogoutButton } from '@/components/ui/logout-button';
+import { SectionTitle } from '@/components/ui/section-title';
+import { SettingsCard } from '@/components/ui/settings-card';
+import { VersionInfo } from '@/components/ui/version-info';
+import { AsalUsulColors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
-import { useTheme } from '@/hooks/use-theme';
 
 export default function SettingScreen() {
   const { signOut } = useAuth();
-  const theme = useTheme();
 
-  // Local loading state for the logout action. Requirements: 5.6
-  const [isSigningOut, setIsSigningOut] = useState(false);
-
-  const handleLogout = async () => {
-    // Prevent double-tap while already signing out. Requirements: 5.6
-    if (isSigningOut) return;
-
-    setIsSigningOut(true);
-
-    try {
-      // Requirements: 5.2, 5.3, 5.5 — signOut handles Google + Firebase sign-out
-      // and always clears user state (even on error).
-      await signOut();
-    } finally {
-      // Reset loading state after signOut resolves or rejects.
-      // Navigation back to AuthScreen is handled automatically by Stack.Protected
-      // in _layout.tsx once user becomes null. Requirements: 5.4
-      setIsSigningOut(false);
-    }
-  };
+  async function handleLogout() {
+    await signOut();
+  }
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        {/* ── Header section ───────────────────────────────────────────── */}
-        <View style={styles.headerSection}>
-          <ThemedText type="title" style={styles.title}>
-            Settings
-          </ThemedText>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Section 1: App Header ─────────────────────────────────────── */}
+        <SettingsCard style={styles.headerCard}>
+          <LogoHeader showTagline={true} logoSize={80} />
+        </SettingsCard>
+
+        {/* ── Section 2: About App ──────────────────────────────────────── */}
+        <View style={styles.section}>
+          <SectionTitle title="TENTANG APLIKASI" />
+          <SettingsCard>
+            <ThemedText
+              type="default"
+              style={styles.bodyText}
+            >
+              AsalUsul membantu keluarga mendokumentasikan sejarah, silsilah, dan warisan keluarga dalam satu pohon digital modern.
+            </ThemedText>
+            <View style={styles.divider} />
+            <ThemedText
+              type="small"
+              style={styles.missionText}
+            >
+              Kami percaya setiap keluarga memiliki cerita yang layak untuk dikenang dan diwariskan.
+            </ThemedText>
+          </SettingsCard>
         </View>
 
-        {/* ── Logout button area ────────────────────────────────────────── */}
-        <View style={styles.buttonSection}>
-          {/* Logout button — disabled while loading. Requirements: 5.1, 5.6 */}
-          <Pressable
-            testID="logout-button"
-            onPress={handleLogout}
-            disabled={isSigningOut}
-            accessibilityRole="button"
-            accessibilityLabel="Logout"
-            accessibilityState={{ disabled: isSigningOut, busy: isSigningOut }}
-            style={({ pressed }) => [
-              styles.button,
-              { backgroundColor: theme.backgroundElement },
-              pressed && !isSigningOut && styles.buttonPressed,
-              isSigningOut && styles.buttonDisabled,
-            ]}
-          >
-            {/* ActivityIndicator replaces label while loading. Requirements: 5.6 */}
-            {isSigningOut ? (
-              <ActivityIndicator
-                testID="activity-indicator"
-                size="small"
-                color={theme.text}
-              />
-            ) : (
-              <ThemedText type="smallBold" style={styles.buttonLabel}>
-                Logout
-              </ThemedText>
-            )}
-          </Pressable>
+        {/* ── Section 3: App Version ────────────────────────────────────── */}
+        <View style={styles.section}>
+          <SectionTitle title="VERSI APLIKASI" />
+          <SettingsCard>
+            <VersionInfo />
+          </SettingsCard>
         </View>
-      </SafeAreaView>
-    </ThemedView>
+
+        {/* ── Section 4: Account / Logout ───────────────────────────────── */}
+        <View style={styles.section}>
+          <SectionTitle title="AKUN" />
+          <LogoutButton onPress={handleLogout} />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.five,
-    maxWidth: MaxContentWidth,
+    backgroundColor: AsalUsulColors.backgroundWarm,
   },
-  headerSection: {
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.four,
+    paddingBottom: 120,
+    gap: Spacing.four,
+  },
+  headerCard: {
     alignItems: 'center',
+  },
+  section: {
     gap: Spacing.two,
   },
-  title: {
-    textAlign: 'center',
+  bodyText: {
+    color: AsalUsulColors.textBody,
+    lineHeight: 24,
   },
-  buttonSection: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    gap: Spacing.three,
+  divider: {
+    height: 1,
+    backgroundColor: AsalUsulColors.borderSubtle,
+    marginVertical: Spacing.three,
   },
-  button: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    borderRadius: Spacing.four,
-    minHeight: 52,
-  },
-  buttonPressed: {
-    opacity: 0.75,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonLabel: {
-    textAlign: 'center',
+  missionText: {
+    color: AsalUsulColors.textMuted,
+    fontStyle: 'italic',
+    lineHeight: 22,
   },
 });
