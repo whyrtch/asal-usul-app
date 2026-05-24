@@ -1,14 +1,19 @@
 /**
  * Integration tests for src/app/(tabs)/index.tsx (HomeScreen)
- * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9
+ * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8
  *
  * Tests:
  * - Renders HomeHeader
- * - Renders HeroIllustration
- * - Renders "Belum ada pohon keluarga" heading
- * - Renders description text
- * - Renders "Buat Sekarang" PrimaryButton
- * - PrimaryButton onPress is invokable (placeholder handler)
+ * - Renders EmptyState when familyTrees is empty (Req 1.1)
+ * - Does NOT render FlatList when familyTrees is empty (Req 1.1)
+ * - Renders FlatList of FamilyTreeCard when familyTrees has entries (Req 1.2)
+ * - Does NOT render EmptyState when familyTrees has entries (Req 1.2)
+ * - Renders create button in header when trees exist (Req 1.3)
+ * - EmptyState onCreatePress opens modal (Req 1.4)
+ * - Header create button opens modal (Req 1.5)
+ * - CreateFamilyTreeModal is always rendered (Req 1.6)
+ * - Modal onSubmit calls addFamilyTree then closes modal (Req 1.7)
+ * - Modal onClose sets modalVisible to false (Req 1.8)
  */
 
 import { fireEvent, render } from '@testing-library/react-native';
@@ -16,7 +21,6 @@ import React from 'react';
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
-// react-native-reanimated: mock Animated.View and entering props
 jest.mock('react-native-reanimated', () => {
   const React = require('react');
   const { View } = require('react-native');
@@ -32,7 +36,6 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
-// react-native-safe-area-context: render children directly
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
   const { View } = require('react-native');
@@ -43,7 +46,6 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-// @expo/vector-icons: mock Ionicons
 jest.mock('@expo/vector-icons', () => {
   const React = require('react');
   const { Text } = require('react-native');
@@ -53,7 +55,6 @@ jest.mock('@expo/vector-icons', () => {
   };
 });
 
-// HomeHeader: render a simple View with testID
 jest.mock('@/components/home-header', () => {
   const React = require('react');
   const { View } = require('react-native');
@@ -63,53 +64,79 @@ jest.mock('@/components/home-header', () => {
   };
 });
 
-// HeroIllustration: render a simple View with testID
-jest.mock('@/components/hero-illustration', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  return {
-    HeroIllustration: () => React.createElement(View, { testID: 'hero-illustration' }),
-  };
-});
-
-// PrimaryButton: render a Pressable with testID and label text
-jest.mock('@/components/primary-button', () => {
+// EmptyState mock — renders a pressable button with testID
+jest.mock('@/components/family/EmptyState', () => {
   const React = require('react');
   const { Pressable, Text } = require('react-native');
   return {
-    PrimaryButton: ({
-      label,
-      onPress,
-      variant,
-    }: {
-      label: string;
-      onPress: () => void;
-      variant?: string;
-    }) =>
+    EmptyState: ({ onCreatePress }: { onCreatePress: () => void }) =>
       React.createElement(
         Pressable,
-        { testID: 'primary-button', onPress, accessibilityLabel: label, accessibilityHint: variant },
-        React.createElement(Text, null, label)
+        { testID: 'empty-state', onPress: onCreatePress },
+        React.createElement(Text, null, 'Buat Sekarang'),
       ),
   };
 });
 
-// ThemedText: render plain Text
-jest.mock('@/components/themed-text', () => {
+// FamilyTreeCard mock — renders a View with the item name
+jest.mock('@/components/family/FamilyTreeCard', () => {
   const React = require('react');
-  const { Text } = require('react-native');
+  const { View, Text } = require('react-native');
   return {
-    ThemedText: ({
-      children,
-      style,
-      testID,
-    }: {
-      children?: React.ReactNode;
-      style?: object;
-      testID?: string;
-    }) => React.createElement(Text, { style, testID }, children),
+    FamilyTreeCard: ({ item }: { item: { id: string; name: string } }) =>
+      React.createElement(
+        View,
+        { testID: `family-tree-card-${item.id}` },
+        React.createElement(Text, null, item.name),
+      ),
   };
 });
+
+// CreateFamilyTreeModal mock — captures visible, onClose, onSubmit
+const mockModalOnClose = jest.fn();
+const mockModalOnSubmit = jest.fn();
+jest.mock('@/components/family/CreateFamilyTreeModal', () => {
+  const React = require('react');
+  const { View, Pressable, Text } = require('react-native');
+  return {
+    CreateFamilyTreeModal: ({
+      visible,
+      onClose,
+      onSubmit,
+    }: {
+      visible: boolean;
+      onClose: () => void;
+      onSubmit: (name: string) => void;
+    }) => {
+      // Store refs so tests can call them
+      mockModalOnClose.mockImplementation(onClose);
+      mockModalOnSubmit.mockImplementation(onSubmit);
+      return React.createElement(
+        View,
+        { testID: 'create-family-tree-modal', accessibilityState: { selected: visible } },
+        React.createElement(
+          Pressable,
+          { testID: 'modal-close-btn', onPress: onClose },
+          React.createElement(Text, null, 'Batal'),
+        ),
+        React.createElement(
+          Pressable,
+          { testID: 'modal-submit-btn', onPress: () => onSubmit('Test Tree') },
+          React.createElement(Text, null, 'Buat'),
+        ),
+      );
+    },
+  };
+});
+
+// useFamilyTreeStore mock — controllable state
+const mockAddFamilyTree = jest.fn();
+let mockFamilyTrees: { id: string; name: string; totalMembers: number; createdAt: string; updatedAt: string; ownerId: string; description: null; coverImage: null }[] = [];
+
+jest.mock('@/store/useFamilyTreeStore', () => ({
+  useFamilyTreeStore: (selector: (state: { familyTrees: typeof mockFamilyTrees; addFamilyTree: typeof mockAddFamilyTree }) => unknown) =>
+    selector({ familyTrees: mockFamilyTrees, addFamilyTree: mockAddFamilyTree }),
+}));
 
 // ── Import component under test ───────────────────────────────────────────────
 
@@ -120,53 +147,114 @@ import HomeScreen from '../app/(tabs)/index';
 describe('HomeScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFamilyTrees = [];
   });
 
-  // ── Requirement 3.1: HomeHeader ───────────────────────────────────────────
+  // ── Requirement 1.1: EmptyState when no trees ─────────────────────────────
 
   it('renders HomeHeader', () => {
     const { getByTestId } = render(<HomeScreen />);
     expect(getByTestId('home-header')).toBeTruthy();
   });
 
-  // ── Requirement 3.2: HeroIllustration ────────────────────────────────────
-
-  it('renders HeroIllustration', () => {
+  it('renders EmptyState when familyTrees is empty (Req 1.1)', () => {
+    mockFamilyTrees = [];
     const { getByTestId } = render(<HomeScreen />);
-    expect(getByTestId('hero-illustration')).toBeTruthy();
+    expect(getByTestId('empty-state')).toBeTruthy();
   });
 
-  // ── Requirement 3.3: heading text ────────────────────────────────────────
-
-  it('renders "Belum ada pohon keluarga" heading', () => {
-    const { getByText } = render(<HomeScreen />);
-    expect(getByText('Belum ada pohon keluarga')).toBeTruthy();
+  it('does NOT render FamilyTreeCard when familyTrees is empty (Req 1.1)', () => {
+    mockFamilyTrees = [];
+    const { queryByTestId } = render(<HomeScreen />);
+    expect(queryByTestId('family-tree-card-1')).toBeNull();
   });
 
-  // ── Requirement 3.4: description text ────────────────────────────────────
+  // ── Requirement 1.2: FlatList when trees exist ────────────────────────────
 
-  it('renders description text', () => {
-    const { getByText } = render(<HomeScreen />);
-    expect(
-      getByText(
-        'Mulai buat pohon keluarga Anda dan hubungkan dengan anggota keluarga lainnya'
-      )
-    ).toBeTruthy();
-  });
-
-  // ── Requirement 3.5: PrimaryButton with correct label ────────────────────
-
-  it('renders "Buat Sekarang" PrimaryButton', () => {
-    const { getByText } = render(<HomeScreen />);
-    expect(getByText('Buat Sekarang')).toBeTruthy();
-  });
-
-  // ── Requirement 3.9: PrimaryButton onPress is invokable ──────────────────
-
-  it('PrimaryButton onPress is invokable (placeholder handler)', () => {
+  it('renders FamilyTreeCard when familyTrees has entries (Req 1.2)', () => {
+    mockFamilyTrees = [
+      {
+        id: 'tree-1',
+        name: 'Keluarga Budi',
+        totalMembers: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ownerId: 'local-user',
+        description: null,
+        coverImage: null,
+      },
+    ];
     const { getByTestId } = render(<HomeScreen />);
-    const button = getByTestId('primary-button');
-    // Should not throw when pressed
-    expect(() => fireEvent.press(button)).not.toThrow();
+    expect(getByTestId('family-tree-card-tree-1')).toBeTruthy();
+  });
+
+  it('does NOT render EmptyState when familyTrees has entries (Req 1.2)', () => {
+    mockFamilyTrees = [
+      {
+        id: 'tree-1',
+        name: 'Keluarga Budi',
+        totalMembers: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ownerId: 'local-user',
+        description: null,
+        coverImage: null,
+      },
+    ];
+    const { queryByTestId } = render(<HomeScreen />);
+    expect(queryByTestId('empty-state')).toBeNull();
+  });
+
+  // ── Requirement 1.6: Modal always rendered ────────────────────────────────
+
+  it('always renders CreateFamilyTreeModal (Req 1.6)', () => {
+    const { getByTestId } = render(<HomeScreen />);
+    expect(getByTestId('create-family-tree-modal')).toBeTruthy();
+  });
+
+  // ── Requirement 1.4: EmptyState button opens modal ────────────────────────
+
+  it('pressing EmptyState opens the modal (Req 1.4)', () => {
+    mockFamilyTrees = [];
+    const { getByTestId } = render(<HomeScreen />);
+    const emptyState = getByTestId('empty-state');
+    fireEvent.press(emptyState);
+    // Modal should now be visible (accessibilityState.selected = true)
+    const modal = getByTestId('create-family-tree-modal');
+    expect(modal.props.accessibilityState?.selected).toBe(true);
+  });
+
+  // ── Requirement 1.7: Modal onSubmit calls addFamilyTree then closes ───────
+
+  it('modal onSubmit calls addFamilyTree and closes modal (Req 1.7)', () => {
+    mockFamilyTrees = [];
+    const { getByTestId } = render(<HomeScreen />);
+
+    // Open modal first
+    fireEvent.press(getByTestId('empty-state'));
+
+    // Submit via modal
+    fireEvent.press(getByTestId('modal-submit-btn'));
+
+    expect(mockAddFamilyTree).toHaveBeenCalledWith('Test Tree', 'local-user');
+
+    // Modal should be closed
+    const modal = getByTestId('create-family-tree-modal');
+    expect(modal.props.accessibilityState?.selected).toBe(false);
+  });
+
+  // ── Requirement 1.8: Modal onClose sets modalVisible false ────────────────
+
+  it('modal onClose sets modalVisible to false (Req 1.8)', () => {
+    mockFamilyTrees = [];
+    const { getByTestId } = render(<HomeScreen />);
+
+    // Open modal
+    fireEvent.press(getByTestId('empty-state'));
+    expect(getByTestId('create-family-tree-modal').props.accessibilityState?.selected).toBe(true);
+
+    // Close modal
+    fireEvent.press(getByTestId('modal-close-btn'));
+    expect(getByTestId('create-family-tree-modal').props.accessibilityState?.selected).toBe(false);
   });
 });

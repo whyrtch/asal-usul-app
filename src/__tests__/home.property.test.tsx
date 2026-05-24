@@ -1,10 +1,11 @@
 /**
  * Property tests for src/app/(tabs)/index.tsx (HomeScreen)
- * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.8, 3.9
  *
- * Full property-based tests are implemented in task 11.2.
- * This file is updated as part of task 11.1 to remove stale tests
- * that referenced the old profile/avatar screen structure.
+ * Property 1: Home Screen conditional rendering invariant
+ *   - Renders EmptyState iff familyTrees.length === 0
+ *   - Renders FamilyTreeCard entries iff familyTrees.length > 0
+ *
+ * Validates: Requirements 1.1, 1.2
  */
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
@@ -51,35 +52,45 @@ jest.mock('@/components/home-header', () => {
   };
 });
 
-jest.mock('@/components/hero-illustration', () => {
+jest.mock('@/components/family/EmptyState', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
-    HeroIllustration: () => React.createElement(View, { testID: 'hero-illustration' }),
+    EmptyState: ({ onCreatePress }: { onCreatePress: () => void }) =>
+      React.createElement(View, { testID: 'empty-state', onTouchEnd: onCreatePress }),
   };
 });
 
-jest.mock('@/components/primary-button', () => {
+jest.mock('@/components/family/FamilyTreeCard', () => {
   const React = require('react');
-  const { Pressable, Text } = require('react-native');
+  const { View, Text } = require('react-native');
   return {
-    PrimaryButton: ({ label, onPress }: { label: string; onPress: () => void }) =>
+    FamilyTreeCard: ({ item }: { item: { id: string; name: string } }) =>
       React.createElement(
-        Pressable,
-        { testID: 'primary-button', onPress },
-        React.createElement(Text, null, label)
+        View,
+        { testID: `family-tree-card-${item.id}` },
+        React.createElement(Text, null, item.name),
       ),
   };
 });
 
-jest.mock('@/components/themed-text', () => {
+jest.mock('@/components/family/CreateFamilyTreeModal', () => {
   const React = require('react');
-  const { Text } = require('react-native');
+  const { View } = require('react-native');
   return {
-    ThemedText: ({ children, style }: { children?: React.ReactNode; style?: object }) =>
-      React.createElement(Text, { style }, children),
+    CreateFamilyTreeModal: ({ visible }: { visible: boolean; onClose: () => void; onSubmit: (name: string) => void }) =>
+      React.createElement(View, { testID: 'create-family-tree-modal', accessibilityState: { selected: visible } }),
   };
 });
+
+// Controllable store mock
+const mockAddFamilyTree = jest.fn();
+let mockFamilyTrees: { id: string; name: string; totalMembers: number; createdAt: string; updatedAt: string; ownerId: string; description: null; coverImage: null }[] = [];
+
+jest.mock('@/store/useFamilyTreeStore', () => ({
+  useFamilyTreeStore: (selector: (state: { familyTrees: typeof mockFamilyTrees; addFamilyTree: typeof mockAddFamilyTree }) => unknown) =>
+    selector({ familyTrees: mockFamilyTrees, addFamilyTree: mockAddFamilyTree }),
+}));
 
 // ── Import after mocks ────────────────────────────────────────────────────────
 
@@ -89,50 +100,80 @@ import React from 'react';
 
 import HomeScreen from '../app/(tabs)/index';
 
+// ── Arbitraries ───────────────────────────────────────────────────────────────
+
+/** Generates a valid FamilyTree-like object for testing. */
+const familyTreeArb = fc.record({
+  id: fc.uuid(),
+  name: fc.string({ minLength: 1, maxLength: 50 }).filter((s) => s.trim().length > 0),
+  totalMembers: fc.nat(),
+  createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }).map((d) => d.toISOString()),
+  updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }).map((d) => d.toISOString()),
+  ownerId: fc.string({ minLength: 1, maxLength: 20 }),
+  description: fc.constant(null),
+  coverImage: fc.constant(null),
+});
+
 // ── Property Tests ────────────────────────────────────────────────────────────
 
 describe('HomeScreen property tests', () => {
-  /**
-   * Property: HomeScreen always renders the required empty-state elements
-   * regardless of how many times it is rendered.
-   * Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5
-   */
-  it('always renders all required empty-state elements across multiple renders', () => {
-    fc.assert(
-      fc.property(fc.integer({ min: 1, max: 5 }), (renderCount) => {
-        let result: ReturnType<typeof render> | null = null;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFamilyTrees = [];
+  });
 
-        for (let i = 0; i < renderCount; i++) {
-          if (result) result.unmount();
-          result = render(<HomeScreen />);
+  /**
+   * Property 1: Home Screen conditional rendering invariant
+   *
+   * For any FamilyTreeStore state:
+   * - Renders EmptyState iff familyTrees.length === 0
+   * - Renders FamilyTreeCard entries iff familyTrees.length > 0
+   *
+   * Validates: Requirements 1.1, 1.2
+   */
+  it('renders EmptyState iff familyTrees.length === 0 (Property 1)', () => {
+    fc.assert(
+      fc.property(fc.array(familyTreeArb, { minLength: 0, maxLength: 5 }), (trees) => {
+        mockFamilyTrees = trees;
+
+        const { queryByTestId, unmount } = render(<HomeScreen />);
+
+        if (trees.length === 0) {
+          // Must render EmptyState
+          expect(queryByTestId('empty-state')).not.toBeNull();
+          // Must NOT render any FamilyTreeCard
+          trees.forEach((t) => {
+            expect(queryByTestId(`family-tree-card-${t.id}`)).toBeNull();
+          });
+        } else {
+          // Must NOT render EmptyState
+          expect(queryByTestId('empty-state')).toBeNull();
+          // Must render a FamilyTreeCard for each tree
+          trees.forEach((t) => {
+            expect(queryByTestId(`family-tree-card-${t.id}`)).not.toBeNull();
+          });
         }
 
-        if (!result) return;
-
-        const { getByTestId, getByText } = result;
-
-        // Requirement 3.1: HomeHeader always present
-        expect(getByTestId('home-header')).toBeTruthy();
-
-        // Requirement 3.2: HeroIllustration always present
-        expect(getByTestId('hero-illustration')).toBeTruthy();
-
-        // Requirement 3.3: heading always present
-        expect(getByText('Belum ada pohon keluarga')).toBeTruthy();
-
-        // Requirement 3.4: description always present
-        expect(
-          getByText(
-            'Mulai buat pohon keluarga Anda dan hubungkan dengan anggota keluarga lainnya'
-          )
-        ).toBeTruthy();
-
-        // Requirement 3.5: CTA button always present
-        expect(getByTestId('primary-button')).toBeTruthy();
-
-        result.unmount();
+        unmount();
       }),
-      { numRuns: 20 }
+      { numRuns: 30 },
+    );
+  });
+
+  /**
+   * Property: CreateFamilyTreeModal is always rendered regardless of store state.
+   * Validates: Requirement 1.6
+   */
+  it('always renders CreateFamilyTreeModal regardless of familyTrees state (Req 1.6)', () => {
+    fc.assert(
+      fc.property(fc.array(familyTreeArb, { minLength: 0, maxLength: 5 }), (trees) => {
+        mockFamilyTrees = trees;
+
+        const { getByTestId, unmount } = render(<HomeScreen />);
+        expect(getByTestId('create-family-tree-modal')).toBeTruthy();
+        unmount();
+      }),
+      { numRuns: 20 },
     );
   });
 });
