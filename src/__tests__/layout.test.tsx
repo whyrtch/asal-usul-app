@@ -54,10 +54,25 @@ jest.mock('react-native/Libraries/Utilities/useColorScheme', () => ({
   default: jest.fn(() => 'light'),
 }));
 
-// AnimatedSplashOverlay: no-op in tests (avoids reanimated/worklets complexity)
-jest.mock('@/components/animated-icon', () => ({
-  AnimatedSplashOverlay: () => null,
-}));
+// SplashScreen component: renders a testable View and captures onAnimationComplete
+// so tests can verify render/removal behaviour (Requirements: 1.10, 1.12)
+let capturedOnAnimationComplete: (() => void) | null = null;
+
+jest.mock('@/components/splash-screen', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    SplashScreen: ({
+      onAnimationComplete,
+    }: {
+      isReady: boolean;
+      onAnimationComplete: () => void;
+    }) => {
+      capturedOnAnimationComplete = onAnimationComplete;
+      return <View testID="splash-screen" />;
+    },
+  };
+});
 
 // firebase/app and firebase/auth: minimal mocks so lib/firebase.ts can load
 jest.mock('firebase/app', () => ({
@@ -235,5 +250,44 @@ describe('RootLayoutNav — SplashScreen.hideAsync (Requirements: 1.2, 1.3)', ()
     // hideAsync should only be called once per mount.
     expect(SplashScreen.hideAsync).toHaveBeenCalledTimes(1);
     unmount();
+  });
+});
+
+describe('RootLayoutNav — SplashScreen component visibility (Requirements: 1.10, 1.12)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    capturedOnAnimationComplete = null;
+  });
+
+  it('renders SplashScreen while loading is true', () => {
+    // While auth state is still loading, the SplashScreen overlay must be visible.
+    // Requirements: 1.12 — SplashScreen accepts isReady prop; when loading=true,
+    // isReady=false so the splash remains mounted.
+    mockUseAuth.mockReturnValue({ user: null, loading: true });
+
+    const { getByTestId } = renderLayout();
+
+    expect(getByTestId('splash-screen')).toBeTruthy();
+  });
+
+  it('removes SplashScreen after onAnimationComplete fires', async () => {
+    // Once auth resolves (loading=false) and the exit animation completes,
+    // onAnimationComplete is called and the SplashScreen must be unmounted.
+    // Requirements: 1.10 — onAnimationComplete is called after exit animation;
+    // 1.12 — parent unmounts SplashScreen in response.
+    mockUseAuth.mockReturnValue({ user: null, loading: false });
+
+    const { queryByTestId } = renderLayout();
+
+    // SplashScreen should be present before onAnimationComplete fires
+    expect(queryByTestId('splash-screen')).toBeTruthy();
+
+    // Simulate the exit animation completing by invoking the captured callback
+    await act(async () => {
+      capturedOnAnimationComplete?.();
+    });
+
+    // After onAnimationComplete, splashDone becomes true and SplashScreen unmounts
+    expect(queryByTestId('splash-screen')).toBeNull();
   });
 });
