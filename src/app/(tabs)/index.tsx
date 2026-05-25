@@ -6,6 +6,7 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,6 +25,7 @@ const OWNER_ID = 'local-user';
 export default function HomeScreen() {
   const familyTrees = useFamilyTreeStore((state) => state.familyTrees);
   const addFamilyTree = useFamilyTreeStore((state) => state.addFamilyTree);
+  const router = useRouter();
 
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -50,9 +52,12 @@ export default function HomeScreen() {
 
   // ─── FlatList renderer ─────────────────────────────────────────────────────
 
-  const renderItem = useCallback(({ item }: { item: FamilyTree }) => {
-    return <FamilyTreeCard item={item} />;
-  }, []);
+  const renderItem = useCallback(
+    ({ item }: { item: FamilyTree }) => {
+      return <FamilyTreeCard item={item} onPress={(id) => router.push(`/family/${id}`)} />;
+    },
+    [router],
+  );
 
   const keyExtractor = useCallback((item: FamilyTree) => item.id, []);
 
