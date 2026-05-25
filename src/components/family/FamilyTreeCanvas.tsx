@@ -1,89 +1,136 @@
 /**
- * FamilyTreeCanvas — viewport/container for the family tree visualization.
+ * FamilyTreeCanvas — viewport for the family tree visualization.
  *
- * Delegates layout computation to `defaultTreeLayoutEngine` and renders
- * `FamilyTreeNode` components at computed absolute positions.
+ * Renders nodes in a generational hierarchy with View-based connector lines.
+ * Supports both horizontal and vertical scrolling for large trees.
  *
- * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 9.4
+ * Requirements: 6.1–6.6, 9.4
  */
 
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { AsalUsulColors, Spacing } from '@/constants/theme';
+import { AsalUsulColors } from '@/constants/theme';
 import { Member } from '@/types/familyTree';
 import {
     defaultTreeLayoutEngine,
+    LayoutEdge,
     LayoutNode,
-    NODE_HEIGHT,
 } from '@/utils/treeLayoutEngine';
 import { FamilyTreeNode } from './FamilyTreeNode';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-/**
- * Width of a single tree node card in logical pixels.
- * Matches the `maxWidth: 160` in FamilyTreeNode styles.
- * NOTE: NODE_WIDTH is not exported from treeLayoutEngine, so we define it here.
- */
-const NODE_WIDTH = 160;
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface FamilyTreeCanvasProps {
-  /** All members belonging to this family tree. */
   members: Member[];
-  /** Called when a node is tapped (future: open member detail). */
   onNodePress?: (memberId: string) => void;
+}
+
+// ─── Connector lines ──────────────────────────────────────────────────────────
+
+/**
+ * Draws elbow connectors between parent and child nodes using three View
+ * segments: vertical down from parent, horizontal, vertical down to child.
+ */
+function ConnectorLines({ edges }: { edges: LayoutEdge[] }) {
+  return (
+    <>
+      {edges.map((edge) => {
+        const midY = Math.round((edge.y1 + edge.y2) / 2);
+        const minX = Math.min(edge.x1, edge.x2);
+        const maxX = Math.max(edge.x1, edge.x2);
+        const hWidth = maxX - minX;
+
+        return (
+          <View key={`${edge.parentId}-${edge.childId}`} pointerEvents="none">
+            {/* Vertical: parent bottom → midY */}
+            <View
+              style={[
+                styles.line,
+                {
+                  left: edge.x1 - 1,
+                  top: edge.y1,
+                  width: 2,
+                  height: midY - edge.y1,
+                },
+              ]}
+            />
+            {/* Horizontal: x1 → x2 at midY */}
+            {hWidth > 0 && (
+              <View
+                style={[
+                  styles.line,
+                  {
+                    left: minX,
+                    top: midY - 1,
+                    width: hWidth,
+                    height: 2,
+                  },
+                ]}
+              />
+            )}
+            {/* Vertical: midY → child top */}
+            <View
+              style={[
+                styles.line,
+                {
+                  left: edge.x2 - 1,
+                  top: midY,
+                  width: 2,
+                  height: edge.y2 - midY,
+                },
+              ]}
+            />
+          </View>
+        );
+      })}
+    </>
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function FamilyTreeCanvas({ members, onNodePress }: FamilyTreeCanvasProps) {
-  const { width: canvasWidth } = useWindowDimensions();
-
-  // Memoize layout computation — Requirement 6.3
-  const layoutNodes: LayoutNode[] = useMemo(
-    () => defaultTreeLayoutEngine.computeLayout(members, canvasWidth),
-    [members, canvasWidth],
+  const layout = useMemo(
+    () => defaultTreeLayoutEngine.computeLayout(members),
+    [members],
   );
 
-  // Compute the total canvas height needed to contain all nodes
-  const canvasHeight = layoutNodes.reduce(
-    (max, node) => Math.max(max, node.y + NODE_HEIGHT / 2 + Spacing.four),
-    NODE_HEIGHT + Spacing.five,
-  );
+  const { nodes, edges, canvasWidth, canvasHeight } = layout;
 
   return (
-    // FadeIn.duration(500) entering animation — Requirements 9.4, 5.7
     <Animated.View entering={FadeIn.duration(500)} style={styles.container}>
-      {/* ScrollView for future pan/zoom support — Requirement 6.6 */}
+      {/* Vertical scroll */}
       <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          { width: canvasWidth, height: canvasHeight },
-        ]}
+        style={styles.outerScroll}
+        contentContainerStyle={styles.outerScrollContent}
         showsVerticalScrollIndicator={false}
-        showsHorizontalScrollIndicator={false}
-        // Optimisation for future large trees
-        removeClippedSubviews
+        bounces
       >
-        {/* Render each LayoutNode as an absolutely positioned FamilyTreeNode — Requirement 6.4 */}
-        {layoutNodes.map((node) => (
-          <Animated.View
-            key={node.member.id}
-            style={[
-              styles.nodeWrapper,
-              {
-                left: node.x - NODE_WIDTH / 2,
-                top: node.y - NODE_HEIGHT / 2,
-              },
-            ]}
-          >
-            <FamilyTreeNode member={node.member} onPress={onNodePress} />
-          </Animated.View>
-        ))}
+        {/* Horizontal scroll */}
+        <ScrollView
+          horizontal
+          contentContainerStyle={{ width: canvasWidth, height: canvasHeight }}
+          showsHorizontalScrollIndicator={false}
+          bounces
+        >
+          {/* Canvas — relative container for absolute nodes + connector lines */}
+          <View style={{ width: canvasWidth, height: canvasHeight }}>
+            {/* Connector lines (rendered below nodes) */}
+            <ConnectorLines edges={edges} />
+
+            {/* Member nodes */}
+            {nodes.map((node: LayoutNode) => (
+              <View
+                key={node.member.id}
+                style={[styles.nodeWrapper, { left: node.x, top: node.y }]}
+              >
+                <FamilyTreeNode member={node.member} onPress={onNodePress} />
+              </View>
+            ))}
+          </View>
+        </ScrollView>
       </ScrollView>
     </Animated.View>
   );
@@ -96,10 +143,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: AsalUsulColors.backgroundWarm,
   },
-  scrollContent: {
-    position: 'relative',
+  outerScroll: {
+    flex: 1,
+  },
+  outerScrollContent: {
+    flexGrow: 1,
   },
   nodeWrapper: {
     position: 'absolute',
+  },
+  line: {
+    position: 'absolute',
+    backgroundColor: AsalUsulColors.borderSubtle,
   },
 });

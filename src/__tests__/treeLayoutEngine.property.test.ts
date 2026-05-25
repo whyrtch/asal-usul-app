@@ -1,25 +1,25 @@
 /**
  * Property-based tests for TreeLayoutEngine
  *
- * Property 1: output length equals input length
+ * Property 1: output node count equals input member count
  * **Validates: Requirements 8.4**
  *
- * Property 2: single-node layout is centered
+ * Property 2: single-node layout is horizontally centered on the canvas
  * **Validates: Requirements 8.3**
  *
- * Property 6: all x-values within canvas bounds
+ * Property 6: all node x-values are within canvas bounds
  * **Validates: Requirements 8.6**
  */
 
 import * as fc from 'fast-check';
 import type { Member } from '../types/familyTree';
-import { defaultTreeLayoutEngine } from '../utils/treeLayoutEngine';
+import { NODE_WIDTH, defaultTreeLayoutEngine } from '../utils/treeLayoutEngine';
 
 // ---------------------------------------------------------------------------
 // Arbitraries
 // ---------------------------------------------------------------------------
 
-/** Arbitrary for a single Member object with all required fields */
+/** Arbitrary for a single Member with no parent/child relationships. */
 const memberArbitrary: fc.Arbitrary<Member> = fc.record<Member>({
   id: fc.string({ minLength: 1 }),
   familyTreeId: fc.string({ minLength: 1 }),
@@ -36,98 +36,69 @@ const memberArbitrary: fc.Arbitrary<Member> = fc.record<Member>({
   createdAt: fc.constant(new Date().toISOString()),
 });
 
-/** Arbitrary for canvas width: positive float between 1 and 2000 */
-const canvasWidthArbitrary = fc.float({ min: 1, max: 2000, noNaN: true });
-
 // ---------------------------------------------------------------------------
-// Property 1: output length equals input length
+// Property 1: output node count equals input member count
 // ---------------------------------------------------------------------------
 
-describe('Property 1: output length equals input length', () => {
-  /**
-   * For any non-null `members` array and any `canvasWidth > 0`,
-   * `computeLayout(members, canvasWidth).length === members.length`.
-   *
-   * **Validates: Requirements 8.4**
-   */
-  it('computeLayout returns an array with the same length as the input members array', () => {
+describe('Property 1: output node count equals input member count', () => {
+  it('computeLayout returns a node for every input member', () => {
     fc.assert(
-      fc.property(
-        fc.array(memberArbitrary),
-        canvasWidthArbitrary,
-        (members, canvasWidth) => {
-          const result = defaultTreeLayoutEngine.computeLayout(members, canvasWidth);
-          expect(result.length).toBe(members.length);
-        }
-      ),
-      { numRuns: 200 }
-    );
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Property 2: single-node layout is centered
-// ---------------------------------------------------------------------------
-
-describe('Property 2: single-node layout is centered', () => {
-  /**
-   * For any single-element `members` array and any `canvasWidth > 0`,
-   * `computeLayout([m], canvasWidth)[0].x === canvasWidth / 2`.
-   *
-   * **Validates: Requirements 8.3**
-   */
-  it('single member is placed at x === canvasWidth / 2', () => {
-    fc.assert(
-      fc.property(
-        memberArbitrary,
-        canvasWidthArbitrary,
-        (member, canvasWidth) => {
-          const result = defaultTreeLayoutEngine.computeLayout([member], canvasWidth);
-          expect(result.length).toBe(1);
-          expect(result[0].x).toBe(canvasWidth / 2);
-        }
-      ),
-      { numRuns: 200 }
-    );
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Property 6: all x-values within canvas bounds
-// ---------------------------------------------------------------------------
-
-describe('Property 6: all x-values within canvas bounds', () => {
-  /**
-   * For any non-null `members` array and any `canvasWidth > 0`,
-   * every `LayoutNode` returned satisfies `0 <= node.x <= canvasWidth`.
-   *
-   * **Validates: Requirements 8.6**
-   */
-  it('every node.x satisfies 0 <= node.x <= canvasWidth', () => {
-    fc.assert(
-      fc.property(
-        fc.array(memberArbitrary, { minLength: 1 }),
-        canvasWidthArbitrary,
-        (members, canvasWidth) => {
-          const result = defaultTreeLayoutEngine.computeLayout(members, canvasWidth);
-          for (const node of result) {
-            expect(node.x).toBeGreaterThanOrEqual(0);
-            expect(node.x).toBeLessThanOrEqual(canvasWidth);
-          }
-        }
-      ),
-      { numRuns: 200 }
-    );
-  });
-
-  it('x-bounds hold for empty array (no nodes to violate bounds)', () => {
-    fc.assert(
-      fc.property(canvasWidthArbitrary, (canvasWidth) => {
-        const result = defaultTreeLayoutEngine.computeLayout([], canvasWidth);
-        // Empty result trivially satisfies the bounds property
-        expect(result.length).toBe(0);
+      fc.property(fc.array(memberArbitrary), (members) => {
+        const { nodes } = defaultTreeLayoutEngine.computeLayout(members);
+        expect(nodes.length).toBe(members.length);
       }),
-      { numRuns: 100 }
+      { numRuns: 200 },
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Property 2: single-node layout is horizontally centered
+// ---------------------------------------------------------------------------
+
+describe('Property 2: single-node layout is horizontally centered', () => {
+  it('single member node is centered: node.x + NODE_WIDTH/2 === canvasWidth/2', () => {
+    fc.assert(
+      fc.property(memberArbitrary, (member) => {
+        const { nodes, canvasWidth } = defaultTreeLayoutEngine.computeLayout([member]);
+        expect(nodes.length).toBe(1);
+        // The node's center x should equal half the canvas width
+        const nodeCenterX = nodes[0].x + NODE_WIDTH / 2;
+        expect(nodeCenterX).toBeCloseTo(canvasWidth / 2, 5);
+      }),
+      { numRuns: 200 },
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Property 6: all node x-values are within canvas bounds
+// ---------------------------------------------------------------------------
+
+describe('Property 6: all node x-values are within canvas bounds', () => {
+  it('every node satisfies 0 <= node.x and node.x + NODE_WIDTH <= canvasWidth', () => {
+    fc.assert(
+      fc.property(fc.array(memberArbitrary, { minLength: 1 }), (members) => {
+        const { nodes, canvasWidth } = defaultTreeLayoutEngine.computeLayout(members);
+        for (const node of nodes) {
+          expect(node.x).toBeGreaterThanOrEqual(0);
+          expect(node.x + NODE_WIDTH).toBeLessThanOrEqual(canvasWidth + 1); // +1 for float rounding
+        }
+      }),
+      { numRuns: 200 },
+    );
+  });
+
+  it('empty array produces empty nodes and zero canvas dimensions', () => {
+    fc.assert(
+      fc.property(fc.constant(null), () => {
+        const { nodes, canvasWidth, canvasHeight } =
+          defaultTreeLayoutEngine.computeLayout([]);
+        expect(nodes.length).toBe(0);
+        expect(canvasWidth).toBe(0);
+        expect(canvasHeight).toBe(0);
+      }),
+      { numRuns: 10 },
     );
   });
 });
