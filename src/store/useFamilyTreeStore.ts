@@ -336,6 +336,93 @@ export const useFamilyTreeStore = create<FamilyTreeStore>()((set) => ({
   },
 
   // ---------------------------------------------------------------------------
+  // updateFamilyTree — no-op when id does not exist
+  // ---------------------------------------------------------------------------
+  updateFamilyTree: (id: string, patch: Partial<Pick<FamilyTree, 'name' | 'description'>>): void => {
+    const now = new Date().toISOString();
+    set((state) => ({
+      familyTrees: state.familyTrees.map((tree) =>
+        tree.id === id ? { ...tree, ...patch, updatedAt: now } : tree
+      ),
+    }));
+  },
+
+  // ---------------------------------------------------------------------------
+  // deleteFamilyTree — removes tree and all its members in a single set() call
+  // ---------------------------------------------------------------------------
+  deleteFamilyTree: (id: string): void => {
+    set((state) => ({
+      familyTrees: state.familyTrees.filter((t) => t.id !== id),
+      members: state.members.filter((m) => m.familyTreeId !== id),
+    }));
+  },
+
+  // ---------------------------------------------------------------------------
+  // updateMember — no-op when memberId does not exist;
+  //   never overwrites id, familyTreeId, or createdAt
+  // ---------------------------------------------------------------------------
+  updateMember: (memberId: string, patch: Partial<Omit<Member, 'id' | 'familyTreeId' | 'createdAt'>>): void => {
+    const now = new Date().toISOString();
+    set((state) => {
+      const target = state.members.find((m) => m.id === memberId);
+      if (!target) return state; // idempotent — nothing to do
+
+      // Destructure to ensure immutable fields are never overwritten
+      const { id: _id, familyTreeId: _familyTreeId, createdAt: _createdAt, ...safePatch } = patch as Partial<Member>;
+
+      return {
+        members: state.members.map((m) =>
+          m.id === memberId ? { ...m, ...safePatch } : m
+        ),
+        familyTrees: state.familyTrees.map((tree) =>
+          tree.id === target.familyTreeId
+            ? { ...tree, updatedAt: now }
+            : tree
+        ),
+      };
+    });
+  },
+
+  // ---------------------------------------------------------------------------
+  // deleteMember — alias for removeMember; handles relationship cleanup and
+  //   totalMembers decrement via the existing removeMember implementation
+  // ---------------------------------------------------------------------------
+  deleteMember: (memberId: string): void => {
+    set((state) => {
+      const target = state.members.find((m) => m.id === memberId);
+      if (!target) return state; // idempotent — nothing to do
+
+      const now = new Date().toISOString();
+
+      const updatedMembers = state.members
+        .filter((m) => m.id !== memberId)
+        .map((m) => {
+          if (m.familyTreeId !== target.familyTreeId) return m;
+          return {
+            ...m,
+            spouseIds: m.spouseIds.filter((id) => id !== memberId),
+            childrenIds: m.childrenIds.filter((id) => id !== memberId),
+            fatherId: m.fatherId === memberId ? null : m.fatherId,
+            motherId: m.motherId === memberId ? null : m.motherId,
+          };
+        });
+
+      return {
+        members: updatedMembers,
+        familyTrees: state.familyTrees.map((tree) =>
+          tree.id === target.familyTreeId
+            ? {
+                ...tree,
+                totalMembers: Math.max(0, tree.totalMembers - 1),
+                updatedAt: now,
+              }
+            : tree
+        ),
+      };
+    });
+  },
+
+  // ---------------------------------------------------------------------------
   // removeMember — idempotent: no-op when memberId does not exist
   // ---------------------------------------------------------------------------
   removeMember: (memberId: string): void => {

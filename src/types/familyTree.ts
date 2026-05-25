@@ -76,7 +76,50 @@ interface FamilyTreeActions {
   removeFamilyTree: (id: string) => void;
   addMember: (member: Omit<Member, 'id' | 'createdAt'>) => void;
   removeMember: (memberId: string) => void;
+  /** Step 5 — update a family tree's name and/or description */
+  updateFamilyTree: (id: string, patch: Partial<Pick<FamilyTree, 'name' | 'description'>>) => void;
+  /** Step 5 — delete a family tree and all its members */
+  deleteFamilyTree: (id: string) => void;
+  /** Step 5 — update editable fields of a member (never mutates id, familyTreeId, createdAt) */
+  updateMember: (memberId: string, patch: Partial<Omit<Member, 'id' | 'familyTreeId' | 'createdAt'>>) => void;
+  /** Step 5 — delete a member and clean up all relationship references */
+  deleteMember: (memberId: string) => void;
 }
 
 /** Combined Zustand store type — state + actions */
 export type FamilyTreeStore = FamilyTreeState & FamilyTreeActions;
+
+// ---------------------------------------------------------------------------
+// Form value / error interfaces — Step 5
+// ---------------------------------------------------------------------------
+
+export interface EditFamilyFormValues {
+  /** Required; must be non-empty after trim */
+  name: string;
+  /** Optional; empty string is treated as null in the store */
+  description: string;
+}
+
+export interface EditFamilyFormErrors {
+  name?: string;
+}
+
+export interface EditMemberFormValues {
+  /** Required; must be non-empty after trim */
+  fullName: string;
+  /** Required */
+  gender: 'male' | 'female';
+  /** Required; non-empty role label */
+  role: string;
+  /** Optional; "YYYY-MM-DD" format or empty string */
+  birthDate: string;
+  /** Optional biography text */
+  bio: string;
+}
+
+export interface EditMemberFormErrors {
+  fullName?: string;
+  gender?: string;
+  role?: string;
+  birthDate?: string;
+}
