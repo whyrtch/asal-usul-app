@@ -67,6 +67,10 @@ jest.mock('react-native-reanimated', () => {
     },
     SlideInDown: {
       duration: () => ({ springify: () => ({}) }),
+      springify: () => ({}),
+    },
+    SlideOutDown: {
+      duration: () => ({}),
     },
     ZoomIn: {
       duration: () => ({ delay: () => ({}) }),
@@ -107,6 +111,7 @@ jest.mock('@expo/vector-icons', () => {
 
 // expo-router: mock useLocalSearchParams, useRouter, and Stack
 const mockRouterBack = jest.fn();
+const mockRouterReplace = jest.fn();
 let mockSearchParams: { id?: string } = { id: 'test-tree-id' };
 
 jest.mock('expo-router', () => {
@@ -114,7 +119,7 @@ jest.mock('expo-router', () => {
   const { View } = require('react-native');
   return {
     useLocalSearchParams: () => mockSearchParams,
-    useRouter: () => ({ back: mockRouterBack, push: jest.fn() }),
+    useRouter: () => ({ back: mockRouterBack, push: jest.fn(), replace: mockRouterReplace }),
     Stack: {
       Screen: ({ options }: { options?: { title?: string } }) =>
         React.createElement(View, { testID: 'stack-screen', accessibilityLabel: options?.title }),
@@ -414,34 +419,34 @@ describe('FamilyTreeDetailScreen', () => {
     });
   });
 
-  // ── Requirement 1.5: unknown treeId → router.back() is called ────────────────
+  // ── Requirement 1.5: unknown treeId → router.replace('/(tabs)') is called ──
 
-  describe('Requirement 1.5 — unknown treeId calls router.back()', () => {
-    it('calls router.back() when treeId does not match any tree in the store', () => {
+  describe('Requirement 1.5 — unknown treeId calls router.replace()', () => {
+    it('calls router.replace() when treeId does not match any tree in the store', () => {
       // Store is empty — no trees at all
       mockSearchParams = { id: UNKNOWN_TREE_ID };
 
       render(<FamilyTreeDetailScreen />);
 
-      expect(mockRouterBack).toHaveBeenCalledTimes(1);
+      expect(mockRouterReplace).toHaveBeenCalledWith('/(tabs)');
     });
 
-    it('calls router.back() when store has trees but none match the given treeId', () => {
+    it('calls router.replace() when store has trees but none match the given treeId', () => {
       seedStoreWithTree(); // seeds TEST_TREE_ID, not UNKNOWN_TREE_ID
       mockSearchParams = { id: UNKNOWN_TREE_ID };
 
       render(<FamilyTreeDetailScreen />);
 
-      expect(mockRouterBack).toHaveBeenCalledTimes(1);
+      expect(mockRouterReplace).toHaveBeenCalledWith('/(tabs)');
     });
 
-    it('does NOT call router.back() when treeId matches a tree in the store', () => {
+    it('does NOT call router.replace() when treeId matches a tree in the store', () => {
       seedStoreWithTree();
       mockSearchParams = { id: TEST_TREE_ID };
 
       render(<FamilyTreeDetailScreen />);
 
-      expect(mockRouterBack).not.toHaveBeenCalled();
+      expect(mockRouterReplace).not.toHaveBeenCalled();
     });
   });
 });
