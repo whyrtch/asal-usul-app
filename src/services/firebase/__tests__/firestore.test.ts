@@ -90,7 +90,8 @@ describe('toISOString', () => {
   it('property: always ends with Z for any valid Date-based Timestamp', () => {
     fc.assert(
       fc.property(
-        fc.date({ min: new Date('1970-01-01T00:00:00.000Z'), max: new Date('2100-12-31T23:59:59.999Z') }),
+        fc.date({ min: new Date('1970-01-01T00:00:00.000Z'), max: new Date('2100-12-31T23:59:59.999Z') })
+          .filter((d) => !isNaN(d.getTime())),
         (date) => {
           const ts = makeTimestamp(date);
           return toISOString(ts).endsWith('Z');
@@ -103,8 +104,11 @@ describe('toISOString', () => {
   it('property: round-trips through Timestamp.fromDate for any Date', () => {
     fc.assert(
       fc.property(
-        // Firestore Timestamp has second + nanosecond precision; use second-aligned dates
-        fc.integer({ min: 0, max: 4102444800 }).map((secs) => new Date(secs * 1000)),
+        // Firestore Timestamp has second + nanosecond precision; use second-aligned dates.
+        // Filter out NaN/invalid dates that can appear when other tests mock Date.
+        fc.integer({ min: 0, max: 4102444800 })
+          .map((secs) => new Date(secs * 1000))
+          .filter((d) => !isNaN(d.getTime())),
         (date) => {
           const ts = makeTimestamp(date);
           return toISOString(ts) === date.toISOString();
