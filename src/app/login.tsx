@@ -190,6 +190,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.five,
     paddingBottom: Spacing.four,
+    justifyContent: 'space-between',
   },
 
   // Logo section
