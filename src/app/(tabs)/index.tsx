@@ -5,9 +5,9 @@
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8
  */
 
-import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CreateFamilyTreeModal } from '@/components/family/CreateFamilyTreeModal';
@@ -24,6 +24,7 @@ const OWNER_ID = 'local-user';
 export default function HomeScreen() {
   const familyTrees = useFamilyTreeStore((state) => state.familyTrees);
   const addFamilyTree = useFamilyTreeStore((state) => state.addFamilyTree);
+  const router = useRouter();
 
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -50,9 +51,12 @@ export default function HomeScreen() {
 
   // ─── FlatList renderer ─────────────────────────────────────────────────────
 
-  const renderItem = useCallback(({ item }: { item: FamilyTree }) => {
-    return <FamilyTreeCard item={item} />;
-  }, []);
+  const renderItem = useCallback(
+    ({ item }: { item: FamilyTree }) => {
+      return <FamilyTreeCard item={item} onPress={(id) => router.push(`/family/${id}`)} />;
+    },
+    [router],
+  );
 
   const keyExtractor = useCallback((item: FamilyTree) => item.id, []);
 
@@ -64,22 +68,10 @@ export default function HomeScreen() {
     <View style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        {hasTrees ? (
-          // Requirement 1.3 — show create button in header area when trees exist
-          <View style={styles.headerRow}>
-            <HomeHeader actionIcon="notifications-outline" />
-            <Pressable
-              onPress={handleOpenModal}
-              style={styles.createButton}
-              accessibilityRole="button"
-              accessibilityLabel="Buat pohon keluarga baru"
-            >
-              <Ionicons name="add" size={20} color={AsalUsulColors.primary} />
-            </Pressable>
-          </View>
-        ) : (
-          <HomeHeader actionIcon="notifications-outline" />
-        )}
+        <HomeHeader
+          actionIcon={hasTrees ? 'add' : 'notifications-outline'}
+          onActionPress={hasTrees ? handleOpenModal : undefined}
+        />
 
         {/* ── Content ─────────────────────────────────────────────────────── */}
         {hasTree(familyTrees) ? (
@@ -121,14 +113,6 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  createButton: {
-    padding: 8,
-    marginRight: 8,
   },
   listContent: {
     paddingHorizontal: 16,
