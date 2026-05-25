@@ -9,24 +9,24 @@
  */
 
 import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    View,
 } from 'react-native';
 import Animated, {
-  SlideInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
+    SlideInDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
 } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { AsalUsulColors, Radii, Shadows, Spacing } from '@/constants/theme';
-import { useFamilyTreeStore } from '@/store/useFamilyTreeStore';
+import { useMemberStore } from '@/store/useMemberStore';
 import type { Member } from '@/types/familyTree';
 import { useState } from 'react';
 
@@ -163,7 +163,8 @@ export function FamilyMemberForm({
   onSuccess,
   onDismiss,
 }: FamilyMemberFormProps) {
-  const addMember = useFamilyTreeStore((state) => state.addMember);
+  // ── Store ───────────────────────────────────────────────────────────────────
+  const addMember = useMemberStore((s) => s.addMember);
 
   // ── Form state ──────────────────────────────────────────────────────────────
   const [formValues, setFormValues] = useState<FormValues>({
@@ -205,7 +206,7 @@ export function FamilyMemberForm({
       relatedMember,
     );
 
-    addMember({
+    addMember(familyTreeId, {
       familyTreeId,
       fullName: formValues.fullName.trim(),
       gender: formValues.gender as 'male' | 'female',

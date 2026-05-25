@@ -21,6 +21,11 @@ import React from 'react';
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
+// Mock auth-context so HomeScreen can call useAuth() without Firebase
+jest.mock('@/context/auth-context', () => ({
+  useAuth: jest.fn(() => ({ user: { uid: 'local-user' }, loading: false })),
+}));
+
 jest.mock('react-native-reanimated', () => {
   const React = require('react');
   const { View } = require('react-native');
@@ -130,12 +135,24 @@ jest.mock('@/components/family/CreateFamilyTreeModal', () => {
 });
 
 // useFamilyTreeStore mock — controllable state
-const mockAddFamilyTree = jest.fn();
+const mockCreateFamilyTree = jest.fn();
 let mockFamilyTrees: { id: string; name: string; totalMembers: number; createdAt: string; updatedAt: string; ownerId: string; description: null; coverImage: null }[] = [];
 
 jest.mock('@/store/useFamilyTreeStore', () => ({
-  useFamilyTreeStore: (selector: (state: { familyTrees: typeof mockFamilyTrees; addFamilyTree: typeof mockAddFamilyTree }) => unknown) =>
-    selector({ familyTrees: mockFamilyTrees, addFamilyTree: mockAddFamilyTree }),
+  useFamilyTreeStore: (selector: (state: {
+    familyTrees: typeof mockFamilyTrees;
+    createFamilyTree: typeof mockCreateFamilyTree;
+    loading: boolean;
+    error: string | null;
+    loadFamilyTrees: jest.Mock;
+  }) => unknown) =>
+    selector({
+      familyTrees: mockFamilyTrees,
+      createFamilyTree: mockCreateFamilyTree,
+      loading: false,
+      error: null,
+      loadFamilyTrees: jest.fn(),
+    }),
 }));
 
 // ── Import component under test ───────────────────────────────────────────────
@@ -236,7 +253,7 @@ describe('HomeScreen', () => {
     // Submit via modal
     fireEvent.press(getByTestId('modal-submit-btn'));
 
-    expect(mockAddFamilyTree).toHaveBeenCalledWith('Test Tree', 'local-user');
+    expect(mockCreateFamilyTree).toHaveBeenCalledWith('Test Tree', 'local-user');
 
     // Modal should be closed
     const modal = getByTestId('create-family-tree-modal');

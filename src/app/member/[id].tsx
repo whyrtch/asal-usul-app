@@ -1,15 +1,16 @@
 /**
  * MemberDetailScreen — dynamic route for a single family member.
  *
- * Reads `id` from route params, resolves the matching Member from the Zustand
- * store, and renders the full profile with edit/delete flows.
+ * Reads `id` from route params, resolves the matching Member from useMemberStore
+ * (searching across all loaded trees), and renders the full profile with
+ * edit/delete flows.
  *
  * Sections:
  *   1. Stack header — title: member.fullName, headerRight: edit + delete icons
  *   2. MemberProfileCard — avatar, name, role badge, birth date
  *   3. Bio section — collapsible, only shown when bio is non-null and non-empty
  *   4. RelationshipSection — Ayah, Ibu, Pasangan, Anak rows
- *   5. EditMemberModal + DeleteMemberDialog — wired to Zustand store
+ *   5. EditMemberModal + DeleteMemberDialog — wired to useMemberStore
  *
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.8, 4.9, 5.1, 6.1, 8.7, 8.8
  */
@@ -31,7 +32,7 @@ import { EditMemberModal } from '@/components/member/EditMemberModal';
 import { MemberProfileCard } from '@/components/member/MemberProfileCard';
 import { RelationshipSection } from '@/components/member/RelationshipSection';
 import { AsalUsulColors, Radii, Shadows, Spacing } from '@/constants/theme';
-import { useFamilyTreeStore } from '@/store/useFamilyTreeStore';
+import { useMemberStore } from '@/store/useMemberStore';
 import type { Member } from '@/types/familyTree';
 
 // ─── Header icon button with spring press feedback ────────────────────────────
@@ -116,12 +117,24 @@ export default function MemberDetailScreen() {
   const router = useRouter();
 
   // ── Store selectors ─────────────────────────────────────────────────────────
-  const members = useFamilyTreeStore((state) => state.members);
-  const updateMember = useFamilyTreeStore((state) => state.updateMember);
-  const deleteMember = useFamilyTreeStore((state) => state.deleteMember);
+  // Search across all loaded trees to find the member by id (Requirement 4.8)
+  const membersByTreeId = useMemberStore((s) => s.membersByTreeId);
+  const updateMember = useMemberStore((s) => s.updateMember);
+  const deleteMember = useMemberStore((s) => s.deleteMember);
 
   // ── Derived state ────────────────────────────────────────────────────────────
-  const member: Member | undefined = members.find((m) => m.id === id);
+  // Find the member across all trees; derive treeId from member.familyTreeId
+  let member: Member | undefined;
+  for (const members of Object.values(membersByTreeId)) {
+    const found = members.find((m) => m.id === id);
+    if (found) {
+      member = found;
+      break;
+    }
+  }
+  const treeId: string = member?.familyTreeId ?? '';
+  // All members in the same tree (for RelationshipSection)
+  const allMembers: Member[] = treeId ? (membersByTreeId[treeId] ?? []) : [];
 
   // ── Local UI state ───────────────────────────────────────────────────────────
   const [editVisible, setEditVisible] = useState(false);
@@ -138,19 +151,19 @@ export default function MemberDetailScreen() {
 
   const handleEditSave = useCallback(
     (patch: Partial<Omit<Member, 'id' | 'familyTreeId' | 'createdAt'>>) => {
-      if (id) {
-        updateMember(id, patch);
+      if (id && treeId) {
+        updateMember(treeId, id, patch);
       }
     },
-    [id, updateMember],
+    [id, treeId, updateMember],
   );
 
   const handleDeleteConfirm = useCallback(() => {
-    if (id) {
-      deleteMember(id);
+    if (id && treeId) {
+      deleteMember(treeId, id);
     }
     router.back();
-  }, [id, deleteMember, router]);
+  }, [id, treeId, deleteMember, router]);
 
   // ── Early return while guard is in effect ───────────────────────────────────
   if (!member) {
@@ -199,7 +212,7 @@ export default function MemberDetailScreen() {
           {hasBio && <BioSection bio={member.bio!} />}
 
           {/* Relationship section — Requirements 4.5, 4.6, 4.7 */}
-          <RelationshipSection member={member} allMembers={members} />
+          <RelationshipSection member={member} allMembers={allMembers} />
         </ScrollView>
       </Animated.View>
 

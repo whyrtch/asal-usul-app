@@ -10,13 +10,14 @@
  * Task 6.1: route setup, store wiring, state management, and SafeAreaView.
  * Task 6.2: conditional rendering logic wired up.
  * Task 7:   settings button + FamilySettingsSheet + EditFamilyModal + DeleteFamilyDialog.
+ * Task 11.3: wired loadMembers on mount via useMemberStore; deleteFamilyTree passes uid.
  *
- * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.4, 3.3, 3.5, 8.1, 8.2, 8.8
+ * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.4, 3.3, 3.5, 4.7, 8.1, 8.2, 8.8
  */
 
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
     FadeIn,
@@ -34,8 +35,15 @@ import { FamilyMemberForm } from '@/components/family/FamilyMemberForm';
 import { FamilySettingsSheet } from '@/components/family/FamilySettingsSheet';
 import { FamilyTreeCanvas } from '@/components/family/FamilyTreeCanvas';
 import { AsalUsulColors, Radii, Shadows, Spacing } from '@/constants/theme';
+import { useAuth } from '@/context/auth-context';
 import { useFamilyTreeStore } from '@/store/useFamilyTreeStore';
+import { useMemberStore } from '@/store/useMemberStore';
 import type { FamilyTree, Member } from '@/types/familyTree';
+
+// Stable empty array — avoids creating a new reference on every render when
+// the tree's members haven't been loaded yet, which would cause an infinite
+// Zustand snapshot loop ("The result of getSnapshot should be cached").
+const EMPTY_MEMBERS: Member[] = [];
 
 // ─── FAB ──────────────────────────────────────────────────────────────────────
 
@@ -109,15 +117,29 @@ export default function FamilyTreeDetailScreen() {
   const { id: treeId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
+  // ── Auth — needed to pass uid to deleteFamilyTree (Requirement 3.9) ────────
+  const { user } = useAuth();
+
   // ── Store selectors — Requirements 10.1, 10.4 ──────────────────────────────
   const familyTrees = useFamilyTreeStore((state: { familyTrees: FamilyTree[] }) => state.familyTrees);
-  const members = useFamilyTreeStore((state: { members: Member[] }) => state.members);
   const updateFamilyTree = useFamilyTreeStore((state) => state.updateFamilyTree);
   const deleteFamilyTree = useFamilyTreeStore((state) => state.deleteFamilyTree);
 
+  // ── Member store — Requirement 4.7 ─────────────────────────────────────────
+  // Use a stable EMPTY_MEMBERS fallback — inline `?? []` creates a new array
+  // reference on every render when the key is missing, causing an infinite loop.
+  const treeMembers = useMemberStore((s) => s.membersByTreeId[treeId ?? ''] ?? EMPTY_MEMBERS);
+  const loadMembers = useMemberStore((s) => s.loadMembers);
+
+  // ── Load members when treeId changes — Requirement 4.7 ────────────────────
+  useEffect(() => {
+    if (treeId) {
+      loadMembers(treeId);
+    }
+  }, [treeId, loadMembers]);
+
   // ── Derived state — Requirements 1.3, 2.4 ──────────────────────────────────
   const tree = familyTrees.find((t) => t.id === treeId);
-  const treeMembers = members.filter((m) => m.familyTreeId === treeId);
 
   // ── Local UI state ──────────────────────────────────────────────────────────
   const [showForm, setShowForm] = useState(false);
@@ -128,8 +150,12 @@ export default function FamilyTreeDetailScreen() {
   const [deleteFamilyVisible, setDeleteFamilyVisible] = useState(false);
 
   // ── Guard: redirect if tree not found — Requirement 1.5 ────────────────────
+  // Use a ref to ensure we only call router.replace once, preventing the
+  // "Maximum update depth exceeded" error from repeated setState calls.
+  const hasRedirectedRef = useRef(false);
   useEffect(() => {
-    if (!tree) {
+    if (!tree && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
       router.replace('/(tabs)');
     }
   }, [tree, router]);
@@ -180,11 +206,11 @@ export default function FamilyTreeDetailScreen() {
 
   /** DeleteFamilyDialog → Confirm: delete tree then navigate home. */
   const handleDeleteConfirm = useCallback(() => {
-    if (treeId) {
-      deleteFamilyTree(treeId);
+    if (treeId && user?.uid) {
+      deleteFamilyTree(treeId, user.uid);
     }
     router.replace('/(tabs)');
-  }, [treeId, deleteFamilyTree, router]);
+  }, [treeId, user?.uid, deleteFamilyTree, router]);
 
   // ── Early return while guard is in effect ──────────────────────────────────
   if (!tree) {

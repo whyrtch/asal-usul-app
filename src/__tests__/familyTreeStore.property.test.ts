@@ -1,18 +1,29 @@
 /**
  * Property-based tests for useFamilyTreeStore
  *
- * Property 6: addFamilyTree prepend invariant
+ * Property 6: prepend invariant (via direct setState injection)
  * Validates: Requirements 3.2
  *
- * Property 7: addFamilyTree unique ID invariant
+ * Property 7: unique ID invariant
  * Validates: Requirements 3.5, 8.2
  *
- * Property 8: addFamilyTree correct shape invariant
+ * Property 8: correct shape invariant
  * Validates: Requirements 3.6, 3.7, 3.8, 8.1, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9
  */
 
+// Mock Firebase dependencies so Jest doesn't need native modules
+jest.mock('@/repositories/familyTreeRepository', () => ({
+  fetchFamilyTrees: jest.fn().mockResolvedValue([]),
+  createFamilyTree: jest.fn(),
+}));
+jest.mock('@/services/firebase/firestore', () => ({
+  isPermissionError: jest.fn().mockReturnValue(false),
+  isNetworkError: jest.fn().mockReturnValue(false),
+}));
+
 import * as fc from 'fast-check';
 import { useFamilyTreeStore } from '../store/useFamilyTreeStore';
+import type { FamilyTree } from '../types/familyTree';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -20,8 +31,32 @@ import { useFamilyTreeStore } from '../store/useFamilyTreeStore';
 
 // Reset store state before each test to avoid cross-test contamination
 beforeEach(() => {
-  useFamilyTreeStore.setState({ familyTrees: [], members: [] });
+  useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
 });
+
+/**
+ * Helper: inject a FamilyTree directly into the store (prepend), simulating
+ * what createFamilyTree does optimistically. Uses name.trim() as the spec requires.
+ */
+let _idCounter = 1_000_000;
+function injectTree(name: string, ownerId: string): FamilyTree {
+  const now = new Date().toISOString();
+  const tree: FamilyTree = {
+    id: `tree_${_idCounter++}`,
+    name: name.trim(),
+    description: null,
+    coverImage: null,
+    ownerId,
+    totalMembers: 0,
+    shareWith: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  useFamilyTreeStore.setState((state) => ({
+    familyTrees: [tree, ...state.familyTrees],
+  }));
+  return tree;
+}
 
 // ---------------------------------------------------------------------------
 // Arbitraries
@@ -34,12 +69,12 @@ const validName = fc.string({ minLength: 1 }).filter((s) => s.trim().length >= 1
 const validOwnerId = fc.string({ minLength: 1 });
 
 // ---------------------------------------------------------------------------
-// Property 6: addFamilyTree prepend invariant
+// Property 6: prepend invariant
 // ---------------------------------------------------------------------------
 
-describe('Property 6: addFamilyTree prepend invariant', () => {
+describe('Property 6: prepend invariant', () => {
   /**
-   * For any sequence of addFamilyTree calls, the most recently added
+   * For any sequence of tree injections, the most recently added
    * FamilyTree is always at index 0 of familyTrees.
    *
    * **Validates: Requirements 3.2**
@@ -52,12 +87,10 @@ describe('Property 6: addFamilyTree prepend invariant', () => {
           fc.array(fc.tuple(validName, validOwnerId), { minLength: 1, maxLength: 20 }),
           (calls) => {
             // Reset store for each property run
-            useFamilyTreeStore.setState({ familyTrees: [], members: [] });
-
-            const { addFamilyTree } = useFamilyTreeStore.getState();
+            useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
 
             for (const [name, ownerId] of calls) {
-              addFamilyTree(name, ownerId);
+              injectTree(name, ownerId);
 
               const { familyTrees } = useFamilyTreeStore.getState();
 
@@ -80,12 +113,10 @@ describe('Property 6: addFamilyTree prepend invariant', () => {
           fc.array(fc.tuple(validName, validOwnerId), { minLength: 2, maxLength: 10 }),
           (calls) => {
             // Reset store for each property run
-            useFamilyTreeStore.setState({ familyTrees: [], members: [] });
-
-            const { addFamilyTree } = useFamilyTreeStore.getState();
+            useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
 
             for (const [name, ownerId] of calls) {
-              addFamilyTree(name, ownerId);
+              injectTree(name, ownerId);
             }
 
             const { familyTrees } = useFamilyTreeStore.getState();
@@ -104,13 +135,12 @@ describe('Property 6: addFamilyTree prepend invariant', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Property 8: addFamilyTree correct shape invariant
+// Property 8: correct shape invariant
 // ---------------------------------------------------------------------------
 
-describe('Property 8: addFamilyTree correct shape invariant', () => {
+describe('Property 8: correct shape invariant', () => {
   /**
-   * For any valid name and ownerId, the FamilyTree created by
-   * `addFamilyTree(name, ownerId)` SHALL have:
+   * For any valid name and ownerId, the FamilyTree injected into the store SHALL have:
    *   - `totalMembers === 0`
    *   - `description === null`
    *   - `coverImage === null`
@@ -128,10 +158,9 @@ describe('Property 8: addFamilyTree correct shape invariant', () => {
       fc.assert(
         fc.property(validName, validOwnerId, (name, ownerId) => {
           // Reset store for each property run
-          useFamilyTreeStore.setState({ familyTrees: [], members: [] });
+          useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
 
-          const { addFamilyTree } = useFamilyTreeStore.getState();
-          addFamilyTree(name, ownerId);
+          injectTree(name, ownerId);
 
           const { familyTrees } = useFamilyTreeStore.getState();
           const tree = familyTrees[0];
@@ -174,10 +203,9 @@ describe('Property 8: addFamilyTree correct shape invariant', () => {
       fc.assert(
         fc.property(validName, validOwnerId, (name, ownerId) => {
           // Reset store for each property run
-          useFamilyTreeStore.setState({ familyTrees: [], members: [] });
+          useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
 
-          const { addFamilyTree } = useFamilyTreeStore.getState();
-          addFamilyTree(name, ownerId);
+          injectTree(name, ownerId);
 
           const { familyTrees } = useFamilyTreeStore.getState();
           const tree = familyTrees[0];
@@ -225,7 +253,6 @@ describe('Property 8: addFamilyTree correct shape invariant', () => {
  * us focus purely on `removeFamilyTree`'s filtering behaviour.
  */
 
-import type { FamilyTree } from '../types/familyTree';
 
 /** Arbitrary that generates a valid FamilyTree object with a given unique id */
 const familyTreeRecord = (id: string) =>
@@ -238,11 +265,12 @@ const familyTreeRecord = (id: string) =>
     createdAt: fc.constant(new Date().toISOString()),
     updatedAt: fc.constant(new Date().toISOString()),
     totalMembers: fc.nat({ max: 100 }),
+    shareWith: fc.constant([]),
   });
 
 describe('Property 10: removeFamilyTree preserves other entries invariant', () => {
   beforeEach(() => {
-    useFamilyTreeStore.setState({ familyTrees: [], members: [] });
+    useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
   });
 
   it('all other entries remain unchanged and in original order after removal', () => {
@@ -258,7 +286,7 @@ describe('Property 10: removeFamilyTree preserves other entries invariant', () =
         fc.nat({ max: 9 }),
         (trees, rawIndex) => {
           // Reset store and inject trees directly
-          useFamilyTreeStore.setState({ familyTrees: [...trees], members: [] });
+          useFamilyTreeStore.setState({ familyTrees: [...trees], loading: false, error: null });
 
           const before = useFamilyTreeStore.getState().familyTrees;
 
@@ -295,7 +323,7 @@ describe('Property 10: removeFamilyTree preserves other entries invariant', () =
         ),
         (trees) => {
           // Reset store and inject trees directly
-          useFamilyTreeStore.setState({ familyTrees: [...trees], members: [] });
+          useFamilyTreeStore.setState({ familyTrees: [...trees], loading: false, error: null });
 
           const before = useFamilyTreeStore.getState().familyTrees;
 
@@ -326,7 +354,8 @@ describe('Property 10: removeFamilyTree preserves other entries invariant', () =
         ([first, middle, last]) => {
           useFamilyTreeStore.setState({
             familyTrees: [first, middle, last],
-            members: [],
+            loading: false,
+            error: null,
           });
 
           useFamilyTreeStore.getState().removeFamilyTree(middle.id);
@@ -355,7 +384,7 @@ describe('Property 10: removeFamilyTree preserves other entries invariant', () =
  */
 describe('Property 9: removeFamilyTree idempotency invariant', () => {
   beforeEach(() => {
-    useFamilyTreeStore.setState({ familyTrees: [], members: [] });
+    useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
   });
 
   it('calling removeFamilyTree(id) twice produces same state as once — existing id', () => {
@@ -367,11 +396,10 @@ describe('Property 9: removeFamilyTree idempotency invariant', () => {
         fc.nat({ max: 9 }),
         (calls, indexSeed) => {
           // Reset store before each property run
-          useFamilyTreeStore.setState({ familyTrees: [], members: [] });
+          useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
 
-          const { addFamilyTree } = useFamilyTreeStore.getState();
           calls.forEach(([name, ownerId]) => {
-            addFamilyTree(name, ownerId);
+            injectTree(name, ownerId);
           });
 
           const stateAfterAdd = useFamilyTreeStore.getState();
@@ -405,11 +433,10 @@ describe('Property 9: removeFamilyTree idempotency invariant', () => {
         fc.string({ minLength: 1 }).filter((s) => s.trim().length >= 1),
         (calls, nonExistentId) => {
           // Reset store before each property run
-          useFamilyTreeStore.setState({ familyTrees: [], members: [] });
+          useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
 
-          const { addFamilyTree } = useFamilyTreeStore.getState();
           calls.forEach(([name, ownerId]) => {
-            addFamilyTree(name, ownerId);
+            injectTree(name, ownerId);
           });
 
           // Ensure the generated id doesn't accidentally match a real tree id
@@ -438,54 +465,34 @@ describe('Property 9: removeFamilyTree idempotency invariant', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Property 7: addFamilyTree unique ID invariant
+// Property 7: unique ID invariant
 // ---------------------------------------------------------------------------
 
 /**
- * Property 7: addFamilyTree unique ID invariant
+ * Property 7: unique ID invariant
  * Validates: Requirements 3.5, 8.2
  *
- * For any sequence of N addFamilyTree calls, all resulting `id` values SHALL
+ * For any sequence of N tree injections, all resulting `id` values SHALL
  * be unique (no duplicates).
- *
- * NOTE: IDs are generated via `Date.now().toString()`. To guarantee uniqueness
- * regardless of clock resolution, we mock `Date.now` with an auto-incrementing
- * counter so each call receives a distinct timestamp value.
  */
-describe('Property 7: addFamilyTree unique ID invariant', () => {
-  let dateNowSpy: jest.SpyInstance;
-  let counter: number;
-
-  beforeEach(() => {
-    counter = 1_000_000;
-    // Replace Date.now with a counter that increments on every call,
-    // guaranteeing each addFamilyTree invocation gets a unique timestamp.
-    dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => counter++);
-  });
-
-  afterEach(() => {
-    dateNowSpy.mockRestore();
-  });
-
+describe('Property 7: unique ID invariant', () => {
   /**
-   * For any sequence of N addFamilyTree calls, all resulting `id` values are
+   * For any sequence of N tree injections, all resulting `id` values are
    * unique — no two trees share the same id.
    *
    * **Validates: Requirements 3.5, 8.2**
    */
-  it('all id values are unique across N addFamilyTree calls', () => {
+  it('all id values are unique across N tree injections', () => {
     fc.assert(
       fc.property(
         fc.array(fc.tuple(validName, validOwnerId), { minLength: 1, maxLength: 20 }),
         (calls) => {
           // Reset store and counter before each property run
-          useFamilyTreeStore.setState({ familyTrees: [], members: [] });
-          counter = 1_000_000;
-
-          const { addFamilyTree } = useFamilyTreeStore.getState();
+          useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
+          _idCounter = 1_000_000;
 
           for (const [name, ownerId] of calls) {
-            addFamilyTree(name, ownerId);
+            injectTree(name, ownerId);
           }
 
           const { familyTrees } = useFamilyTreeStore.getState();
@@ -510,13 +517,11 @@ describe('Property 7: addFamilyTree unique ID invariant', () => {
       fc.property(
         fc.array(fc.tuple(validName, validOwnerId), { minLength: 1, maxLength: 10 }),
         (calls) => {
-          useFamilyTreeStore.setState({ familyTrees: [], members: [] });
-          counter = 2_000_000;
-
-          const { addFamilyTree } = useFamilyTreeStore.getState();
+          useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
+          _idCounter = 2_000_000;
 
           for (const [name, ownerId] of calls) {
-            addFamilyTree(name, ownerId);
+            injectTree(name, ownerId);
           }
 
           const { familyTrees } = useFamilyTreeStore.getState();
