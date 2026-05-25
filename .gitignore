@@ -54,5 +54,7 @@ credentials.json
 # Keystore files (signing keys)
 *.keystore
 
-# Sentry auth token (if used)
-.sentryclirc
+# Kiro IDE — skills are downloaded automatically by Kiro, not project-specific
+.kiro/skills/
+.kiro/.claude-plugin/
+skills-lock.json
