@@ -14,6 +14,14 @@ jest.mock('firebase/app', () => ({
   getApps: jest.fn(() => []),
   getApp: jest.fn(() => ({ name: '[DEFAULT]' })),
 }));
+jest.mock('firebase/firestore', () => ({
+  getFirestore: jest.fn(() => ({})),
+  collection: jest.fn(),
+  doc: jest.fn(),
+  getDoc: jest.fn(),
+  setDoc: jest.fn(),
+  updateDoc: jest.fn(),
+}));
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
   default: { getItem: jest.fn(), setItem: jest.fn(), removeItem: jest.fn() },

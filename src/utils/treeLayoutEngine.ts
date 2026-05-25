@@ -431,42 +431,6 @@ export const defaultTreeLayoutEngine: TreeLayoutEngine = {
       canvasHeight,
     };
 
-    console.log('[treeLayoutEngine] computeLayout result:', JSON.stringify({
-      members: members.map((m) => ({
-        id: m.id,
-        fullName: m.fullName,
-        gen: genMap.get(m.id),
-        fatherId: m.fatherId,
-        motherId: m.motherId,
-        spouseIds: m.spouseIds,
-        childrenIds: m.childrenIds,
-      })),
-      nodes: result.nodes.map((n) => ({
-        id: n.member.id,
-        fullName: n.member.fullName,
-        x: n.x,
-        y: n.y,
-      })),
-      edges: result.edges.map((e) => ({
-        parentId: e.parentId,
-        childId: e.childId,
-        x1: e.x1,
-        y1: e.y1,
-        x2: e.x2,
-        y2: e.y2,
-        fromCouple: e.fromCouple,
-      })),
-      spouseEdges: result.spouseEdges.map((s) => ({
-        spouseAId: s.spouseAId,
-        spouseBId: s.spouseBId,
-        x1: s.x1,
-        x2: s.x2,
-        y: s.y,
-      })),
-      canvasWidth: result.canvasWidth,
-      canvasHeight: result.canvasHeight,
-    }, null, 2));
-
     return result;
   },
 };

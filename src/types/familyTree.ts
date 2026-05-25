@@ -27,6 +27,11 @@ export interface FamilyTree {
   updatedAt: string;
   /** Non-negative integer; incremented/decremented as members are added/removed */
   totalMembers: number;
+  /**
+   * Array of Firebase Auth UIDs that the owner has shared this tree with.
+   * Empty array by default. Used for future read-only sharing/collaboration.
+   */
+  shareWith: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -68,22 +73,22 @@ export interface Member {
 
 interface FamilyTreeState {
   familyTrees: FamilyTree[];
-  members: Member[];
+  /** True while a Firestore fetch is in progress */
+  loading: boolean;
+  /** Non-null when the last Firestore operation failed; null otherwise */
+  error: string | null;
 }
 
 interface FamilyTreeActions {
-  addFamilyTree: (name: string, ownerId: string) => void;
+  /** Step 6 — create a family tree in Firestore with optimistic insert */
+  createFamilyTree: (name: string, uid: string) => Promise<void>;
   removeFamilyTree: (id: string) => void;
-  addMember: (member: Omit<Member, 'id' | 'createdAt'>) => void;
-  removeMember: (memberId: string) => void;
-  /** Step 5 — update a family tree's name and/or description */
-  updateFamilyTree: (id: string, patch: Partial<Pick<FamilyTree, 'name' | 'description'>>) => void;
-  /** Step 5 — delete a family tree and all its members */
-  deleteFamilyTree: (id: string) => void;
-  /** Step 5 — update editable fields of a member (never mutates id, familyTreeId, createdAt) */
-  updateMember: (memberId: string, patch: Partial<Omit<Member, 'id' | 'familyTreeId' | 'createdAt'>>) => void;
-  /** Step 5 — delete a member and clean up all relationship references */
-  deleteMember: (memberId: string) => void;
+  /** Step 6 — load family trees from Firestore for the given uid */
+  loadFamilyTrees: (uid: string) => Promise<void>;
+  /** Step 6 — update a family tree's name and/or description in Firestore with optimistic patch */
+  updateFamilyTree: (treeId: string, patch: Partial<Pick<FamilyTree, 'name' | 'description'>>) => Promise<void>;
+  /** Step 6 — delete a family tree and all its members from Firestore with optimistic removal */
+  deleteFamilyTree: (treeId: string, uid: string) => Promise<void>;
 }
 
 /** Combined Zustand store type — state + actions */

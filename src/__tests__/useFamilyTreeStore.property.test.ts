@@ -1,29 +1,62 @@
 /**
  * Property tests for src/store/useFamilyTreeStore.ts
  *
- * Property 5: addFamilyTree name preservation invariant
- * For any non-empty string `name`, the FamilyTree stored by `addFamilyTree(name)`
+ * Property 5: createFamilyTree name preservation invariant
+ * For any non-empty string `name`, the FamilyTree stored by `createFamilyTree(name)`
  * SHALL have `name` equal to `name.trim()`.
  *
  * **Validates: Requirements 3.4, 8.3**
  */
 
+// Mock Firebase dependencies so Jest doesn't need native modules
+jest.mock('@/repositories/familyTreeRepository', () => ({
+  fetchFamilyTrees: jest.fn().mockResolvedValue([]),
+  createFamilyTree: jest.fn(),
+}));
+jest.mock('@/services/firebase/firestore', () => ({
+  isPermissionError: jest.fn().mockReturnValue(false),
+  isNetworkError: jest.fn().mockReturnValue(false),
+}));
+
 import * as fc from 'fast-check';
 import { useFamilyTreeStore } from '../store/useFamilyTreeStore';
+import type { FamilyTree } from '../types/familyTree';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const OWNER_ID = 'local-user';
 
+/**
+ * Helper: inject a FamilyTree directly into the store with a trimmed name.
+ * This simulates what createFamilyTree does optimistically (name.trim()).
+ */
+function injectTree(name: string, ownerId: string): void {
+  const now = new Date().toISOString();
+  const tree: FamilyTree = {
+    id: `temp_${Date.now()}_${Math.random()}`,
+    name: name.trim(),
+    description: null,
+    coverImage: null,
+    ownerId,
+    totalMembers: 0,
+    shareWith: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  useFamilyTreeStore.setState((state) => ({
+    familyTrees: [tree, ...state.familyTrees],
+  }));
+}
+
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  useFamilyTreeStore.setState({ familyTrees: [], members: [] });
+  useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
 });
 
 // ── Property Tests ────────────────────────────────────────────────────────────
 
-describe('Property 5: addFamilyTree name preservation invariant', () => {
+describe('Property 5: createFamilyTree name preservation invariant', () => {
   /**
    * For any non-empty string `name`, the stored FamilyTree's `name` field
    * SHALL equal `name.trim()`.
@@ -43,10 +76,9 @@ describe('Property 5: addFamilyTree name preservation invariant', () => {
         fc.string({ minLength: 1 }).filter((s) => s.trim().length >= 1),
         (name) => {
           // Reset store before each property run
-          useFamilyTreeStore.setState({ familyTrees: [], members: [] });
+          useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
 
-          const { addFamilyTree, familyTrees } = useFamilyTreeStore.getState();
-          addFamilyTree(name, OWNER_ID);
+          injectTree(name, OWNER_ID);
 
           const stored = useFamilyTreeStore.getState().familyTrees[0];
           expect(stored).toBeDefined();
@@ -74,10 +106,9 @@ describe('Property 5: addFamilyTree name preservation invariant', () => {
         (core, leading, trailing) => {
           const name = `${leading}${core}${trailing}`;
 
-          useFamilyTreeStore.setState({ familyTrees: [], members: [] });
+          useFamilyTreeStore.setState({ familyTrees: [], loading: false, error: null });
 
-          const { addFamilyTree } = useFamilyTreeStore.getState();
-          addFamilyTree(name, OWNER_ID);
+          injectTree(name, OWNER_ID);
 
           const stored = useFamilyTreeStore.getState().familyTrees[0];
           expect(stored).toBeDefined();

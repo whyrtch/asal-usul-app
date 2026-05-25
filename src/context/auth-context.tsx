@@ -13,6 +13,8 @@ import {
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { auth } from '../lib/firebase';
+import { upsertUserDocument } from '../services/firebase/auth';
+import { useAuthStore } from '../store/useAuthStore';
 
 // Web client ID for Google Sign-In (from env or placeholder)
 const WEB_CLIENT_ID =
@@ -122,6 +124,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(timeoutId);
       setUser(firebaseUser ? mapFirebaseUser(firebaseUser) : null);
       setLoading(false);
+      // Sync uid into useAuthStore (Requirements: 6.5)
+      useAuthStore.getState().setUid(firebaseUser?.uid ?? null);
     });
 
     // ── Cleanup on unmount (Requirements: 3.1) ────────────────────────────────
@@ -171,10 +175,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       // Race Firebase credential exchange against the timeout.
-      await Promise.race([
+      const firebaseUser = await Promise.race([
         signInWithCredential(auth, GoogleAuthProvider.credential(idToken)),
         timeoutPromise,
       ]);
+
+      // Sync uid into useAuthStore (Requirements: 6.5)
+      useAuthStore.getState().setUid(firebaseUser.user.uid);
+
+      // Upsert Firestore user document — failure must not block navigation (Requirement 1.4)
+      try {
+        await upsertUserDocument(firebaseUser.user);
+      } catch (upsertError) {
+        console.error('[AuthContext] upsertUserDocument failed:', upsertError);
+      }
     } catch (error: unknown) {
       if (isErrorWithCode(error)) {
         // Sign-in already in progress — ignore silently.
@@ -248,6 +262,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       // Step 3: Always clear local session regardless of errors (Requirements: 5.3, 5.5)
       setUser(null);
+      // Clear useAuthStore auth state (Requirements: 6.5)
+      useAuthStore.getState().clearAuth();
     }
   };
 

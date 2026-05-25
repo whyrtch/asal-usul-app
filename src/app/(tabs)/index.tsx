@@ -2,12 +2,12 @@
  * HomeScreen — Conditionally renders EmptyState or a FlatList of FamilyTreeCard
  * components based on the FamilyTreeStore state.
  *
- * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8
+ * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 2.4, 2.5, 2.6, 2.7
  */
 
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CreateFamilyTreeModal } from '@/components/family/CreateFamilyTreeModal';
@@ -15,18 +15,29 @@ import { EmptyState } from '@/components/family/EmptyState';
 import { FamilyTreeCard } from '@/components/family/FamilyTreeCard';
 import { HomeHeader } from '@/components/home-header';
 import { AsalUsulColors } from '@/constants/theme';
+import { useAuth } from '@/context/auth-context';
 import { useFamilyTreeStore } from '@/store/useFamilyTreeStore';
 import type { FamilyTree } from '@/types/familyTree';
 
-/** Placeholder owner ID until Firebase auth is integrated. */
-const OWNER_ID = 'local-user';
-
 export default function HomeScreen() {
+  const { user } = useAuth();
+
   const familyTrees = useFamilyTreeStore((state) => state.familyTrees);
-  const addFamilyTree = useFamilyTreeStore((state) => state.addFamilyTree);
+  const loading = useFamilyTreeStore((state) => state.loading);
+  const error = useFamilyTreeStore((state) => state.error);
+  const loadFamilyTrees = useFamilyTreeStore((state) => state.loadFamilyTrees);
+  const createFamilyTree = useFamilyTreeStore((state) => state.createFamilyTree);
+
   const router = useRouter();
 
   const [modalVisible, setModalVisible] = useState(false);
+
+  // ─── Load family trees on mount / uid change (Requirements: 2.4) ──────────
+  useEffect(() => {
+    if (user?.uid) {
+      loadFamilyTrees(user.uid);
+    }
+  }, [user?.uid, loadFamilyTrees]);
 
   // ─── Memoized callbacks ────────────────────────────────────────────────────
 
@@ -35,13 +46,15 @@ export default function HomeScreen() {
     setModalVisible(false);
   }, []);
 
-  /** Requirement 1.7 — submit: add tree then close modal */
+  /** Requirement 1.7 — submit: create tree then close modal */
   const handleModalSubmit = useCallback(
     (name: string) => {
-      addFamilyTree(name, OWNER_ID);
+      if (user?.uid) {
+        createFamilyTree(name, user.uid);
+      }
       setModalVisible(false);
     },
-    [addFamilyTree],
+    [createFamilyTree, user?.uid],
   );
 
   /** Requirement 1.4 / 1.5 — open modal */
@@ -73,19 +86,33 @@ export default function HomeScreen() {
           onActionPress={hasTrees ? handleOpenModal : undefined}
         />
 
-        {/* ── Content ─────────────────────────────────────────────────────── */}
-        {hasTree(familyTrees) ? (
-          // Requirement 1.2 — FlatList of FamilyTreeCard
-          <FlatList
-            data={familyTrees}
-            keyExtractor={keyExtractor}
-            renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
+        {/* ── Error banner (Requirement 2.7) ──────────────────────────────── */}
+        {error !== null && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {/* ── Loading indicator (Requirement 2.5) ─────────────────────────── */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={AsalUsulColors.primary} />
+          </View>
         ) : (
-          // Requirement 1.1 — EmptyState when no trees
-          <EmptyState onCreatePress={handleOpenModal} />
+          /* ── Content ──────────────────────────────────────────────────── */
+          hasTree(familyTrees) ? (
+            // Requirement 1.2 — FlatList of FamilyTreeCard
+            <FlatList
+              data={familyTrees}
+              keyExtractor={keyExtractor}
+              renderItem={renderItem}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+            />
+          ) : (
+            // Requirement 1.1 — EmptyState when no trees
+            <EmptyState onCreatePress={handleOpenModal} />
+          )
         )}
       </SafeAreaView>
 
@@ -119,5 +146,25 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 24,
     gap: 12,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorBanner: {
+    backgroundColor: '#FDECEA',
+    borderLeftWidth: 4,
+    borderLeftColor: '#D32F2F',
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 4,
+  },
+  errorText: {
+    color: '#B71C1C',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

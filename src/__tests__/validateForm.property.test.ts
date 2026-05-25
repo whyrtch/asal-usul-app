@@ -7,6 +7,63 @@
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
+// AsyncStorage: required by firebase.ts → config.ts → memberRepository → useMemberStore
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+    clear: jest.fn(),
+  },
+}));
+
+// Firebase modules: stub out so Jest doesn't need a real Firebase app
+jest.mock('firebase/app', () => ({ getApp: jest.fn(), initializeApp: jest.fn() }));
+jest.mock('firebase/auth', () => ({
+  getReactNativePersistence: jest.fn(),
+  initializeAuth: jest.fn(),
+  getAuth: jest.fn(),
+}));
+jest.mock('firebase/firestore', () => ({
+  getFirestore: jest.fn(),
+  collection: jest.fn(),
+  doc: jest.fn(),
+  addDoc: jest.fn(),
+  getDocs: jest.fn(),
+  getDoc: jest.fn(),
+  updateDoc: jest.fn(),
+  deleteDoc: jest.fn(),
+  writeBatch: jest.fn(),
+  runTransaction: jest.fn(),
+  serverTimestamp: jest.fn(),
+  increment: jest.fn(),
+  arrayRemove: jest.fn(),
+  where: jest.fn(),
+  orderBy: jest.fn(),
+  query: jest.fn(),
+}));
+
+// Service/repository mocks: prevent real Firestore calls
+jest.mock('@/services/firebase/config', () => ({ db: {}, auth: {} }));
+jest.mock('@/services/firebase/firestore', () => ({
+  serverTimestamp: jest.fn(),
+  withRetry: jest.fn((op: () => Promise<unknown>) => op()),
+  isPermissionError: jest.fn(() => false),
+  isNetworkError: jest.fn(() => false),
+}));
+jest.mock('@/repositories/memberRepository', () => ({
+  fetchMembers: jest.fn(),
+  createMember: jest.fn(),
+  updateMember: jest.fn(),
+  deleteMember: jest.fn(),
+}));
+
+// useMemberStore: FamilyMemberForm now uses this instead of useFamilyTreeStore
+jest.mock('@/store/useMemberStore', () => ({
+  useMemberStore: () => ({ addMember: jest.fn() }),
+}));
+
 // react-native-reanimated: stub out all animation primitives so the module
 // loads without a native UI thread in the Jest environment.
 jest.mock('react-native-reanimated', () => {
@@ -29,12 +86,6 @@ jest.mock('react-native-reanimated', () => {
     runOnJS: (fn: (...args: unknown[]) => void) => fn,
   };
 });
-
-// useFamilyTreeStore: validateForm doesn't use the store, but FamilyMemberForm
-// imports it at module level — stub it out so Jest doesn't need Zustand setup.
-jest.mock('@/store/useFamilyTreeStore', () => ({
-  useFamilyTreeStore: () => ({ addMember: jest.fn() }),
-}));
 
 // ThemedText: not needed for pure function tests
 jest.mock('@/components/themed-text', () => ({
