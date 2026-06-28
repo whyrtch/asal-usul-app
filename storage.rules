@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Cloud Storage security rules for AsalUsul.
+//
+// Photos live under: family_trees/{treeId}/...
+// Only the owner of the parent family tree (in Firestore) may read or write.
+// Mirrors the owner-only model in firestore.rules.
+//
+// NOTE: deploy with `firebase deploy --only storage` after enabling Storage
+// in the Firebase console.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // All objects scoped to a family tree.
+    match /family_trees/{treeId}/{allPaths=**} {
+      allow read, write: if request.auth != null
+        && firestore.get(/databases/(default)/documents/family_trees/$(treeId)).data.ownerId == request.auth.uid
+        // Limit uploads to images up to 5 MB.
+        && (request.resource == null || (
+          request.resource.size < 5 * 1024 * 1024
+          && request.resource.contentType.matches('image/.*')
+        ));
+    }
+
+    // Default deny everything else.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

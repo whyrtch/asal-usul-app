@@ -32,6 +32,11 @@ export interface UserDocument {
   photoUrl: string;
   /** Authentication provider — always 'google' for this app */
   provider: 'google';
+  /**
+   * Account tier for monetization. Defaults to 'free'. Read-only on the client;
+   * upgrades are server/billing-driven (Phase 4).
+   */
+  plan: 'free' | 'premium';
   /** Server timestamp set once at document creation */
   createdAt: Timestamp;
   /** Server timestamp updated on every write to this document */
@@ -153,6 +158,14 @@ export interface MemberDocument {
   role: string;
   /** Date of birth in "YYYY-MM-DD" format, or null if unknown */
   birthDate: string | null;
+  /** Living/deceased status of the member. Defaults to 'living' for legacy docs */
+  status: 'living' | 'deceased';
+  /** Date of death in "YYYY-MM-DD" format, or null if living/unknown */
+  deathDate: string | null;
+  /** Optional photo download URL; null if not provided */
+  photoUrl: string | null;
+  /** Optional biography text; null if not provided */
+  bio: string | null;
   /** References the father's `memberId` within the same tree, or null */
   fatherId: string | null;
   /** References the mother's `memberId` within the same tree, or null */
@@ -182,6 +195,14 @@ export interface CreateMemberInput {
   role: string;
   /** Date of birth in "YYYY-MM-DD" format, or null if unknown */
   birthDate: string | null;
+  /** Living/deceased status; defaults to 'living' when omitted */
+  status?: 'living' | 'deceased';
+  /** Date of death in "YYYY-MM-DD" format, or null if living/unknown */
+  deathDate?: string | null;
+  /** Optional photo download URL; null if not provided */
+  photoUrl?: string | null;
+  /** Optional biography text; null if not provided */
+  bio?: string | null;
   /** References the father's `memberId` within the same tree, or null */
   fatherId: string | null;
   /** References the mother's `memberId` within the same tree, or null */
@@ -205,6 +226,14 @@ export interface UpdateMemberInput {
   role: string;
   /** Updated date of birth, or null to clear */
   birthDate: string | null;
+  /** Updated living/deceased status */
+  status: 'living' | 'deceased';
+  /** Updated date of death, or null to clear */
+  deathDate: string | null;
+  /** Updated photo download URL, or null to clear */
+  photoUrl: string | null;
+  /** Updated biography text, or null to clear */
+  bio: string | null;
   /** Updated father reference, or null to clear */
   fatherId: string | null;
   /** Updated mother reference, or null to clear */

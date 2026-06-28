@@ -449,3 +449,42 @@ export function extractBirthYear(birthDate: string | null): string {
   if (birthDate === null) return '';
   return birthDate.slice(0, 4);
 }
+
+/**
+ * Extracts the 4-character year prefix from a `YYYY-MM-DD` death date string.
+ * Returns `''` when `deathDate` is `null`.
+ */
+export function extractDeathYear(deathDate: string | null): string {
+  if (deathDate === null) return '';
+  return deathDate.slice(0, 4);
+}
+
+/**
+ * Formats a member's life span for compact display on a tree node.
+ *
+ * - Living member: returns the birth year alone (e.g. "1945") or "" if unknown.
+ * - Deceased member: returns a range using an en-dash, e.g. "1945–2010",
+ *   "1945–" (death year unknown), "–2010" (birth year unknown), or "†" when
+ *   neither year is known.
+ *
+ * @param birthDate - ISO "YYYY-MM-DD" birth date or null.
+ * @param deathDate - ISO "YYYY-MM-DD" death date or null.
+ * @param status    - 'living' or 'deceased'.
+ */
+export function formatLifeRange(
+  birthDate: string | null,
+  deathDate: string | null,
+  status: 'living' | 'deceased',
+): string {
+  const birth = extractBirthYear(birthDate);
+  const death = extractDeathYear(deathDate);
+
+  if (status === 'deceased') {
+    if (birth && death) return `${birth}–${death}`;
+    if (birth) return `${birth}–`;
+    if (death) return `–${death}`;
+    return '†';
+  }
+
+  return birth;
+}

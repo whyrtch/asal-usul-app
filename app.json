@@ -36,7 +36,13 @@
           }
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Aplikasi memerlukan akses ke galeri untuk menambahkan foto anggota keluarga."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -27,6 +27,11 @@ export interface FamilySettingsSheetProps {
   onEditPress: () => void;
   /** Called when the user taps "Hapus Keluarga". */
   onDeletePress: () => void;
+  /**
+   * Called when the user taps "Kelola Akses". When omitted, the row is hidden
+   * (e.g. sharing disabled). Owner-only entry to collaborator management.
+   */
+  onManageAccessPress?: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -45,6 +50,7 @@ export function FamilySettingsSheet({
   onClose,
   onEditPress,
   onDeletePress,
+  onManageAccessPress,
 }: FamilySettingsSheetProps) {
   return (
     <Modal
@@ -86,6 +92,27 @@ export function FamilySettingsSheet({
           />
           <ThemedText style={styles.rowLabel}>Edit Keluarga</ThemedText>
         </Pressable>
+
+        {/* ── Manage access row (owner + sharing enabled only) ──────────────── */}
+        {onManageAccessPress && (
+          <>
+            <View style={styles.divider} />
+            <Pressable
+              onPress={onManageAccessPress}
+              style={({ pressed }) => [styles.actionRow, pressed && styles.actionRowPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Kelola Akses"
+            >
+              <Ionicons
+                name="people-outline"
+                size={22}
+                color={AsalUsulColors.textBody}
+                style={styles.rowIcon}
+              />
+              <ThemedText style={styles.rowLabel}>Kelola Akses</ThemedText>
+            </Pressable>
+          </>
+        )}
 
         {/* Subtle divider */}
         <View style={styles.divider} />

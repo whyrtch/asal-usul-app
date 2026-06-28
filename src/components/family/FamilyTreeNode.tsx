@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import Animated, {
     FadeIn,
     useAnimatedStyle,
@@ -18,27 +18,22 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import { MemberAvatar } from '@/components/ui/member-avatar';
 import { AsalUsulColors, Radii, Shadows, Spacing } from '@/constants/theme';
 import { Member } from '@/types/familyTree';
-import { extractBirthYear, NODE_HEIGHT, NODE_WIDTH } from '@/utils/treeLayoutEngine';
+import { formatLifeRange, NODE_HEIGHT, NODE_WIDTH } from '@/utils/treeLayoutEngine';
 
 export interface FamilyTreeNodeProps {
   member: Member;
   onPress?: (memberId: string) => void;
-}
-
-function getInitials(fullName: string): string {
-  return fullName
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  /** When true, draws a highlight ring (used by search-to-focus). */
+  highlighted?: boolean;
 }
 
 const FamilyTreeNode = React.memo(function FamilyTreeNode({
   member,
   onPress,
+  highlighted = false,
 }: FamilyTreeNodeProps) {
   const scale = useSharedValue(1);
 
@@ -46,8 +41,7 @@ const FamilyTreeNode = React.memo(function FamilyTreeNode({
     transform: [{ scale: scale.value }],
   }));
 
-  const initials = getInitials(member.fullName);
-  const birthYear = extractBirthYear(member.birthDate);
+  const lifeRange = formatLifeRange(member.birthDate, member.deathDate, member.status);
 
   return (
     <Animated.View entering={FadeIn.duration(400).delay(100)}>
@@ -63,12 +57,10 @@ const FamilyTreeNode = React.memo(function FamilyTreeNode({
             }}
             accessibilityRole="button"
             accessibilityLabel={member.fullName}
-            style={styles.card}
+            style={[styles.card, highlighted && styles.cardHighlighted]}
           >
-            {/* Avatar */}
-            <View style={styles.avatar}>
-              <ThemedText style={styles.initials}>{initials}</ThemedText>
-            </View>
+            {/* Avatar (photo with initials fallback) */}
+            <MemberAvatar fullName={member.fullName} photoUrl={member.photoUrl} size={52} />
 
             {/* Name */}
             <ThemedText style={styles.fullName} numberOfLines={2}>
@@ -80,9 +72,9 @@ const FamilyTreeNode = React.memo(function FamilyTreeNode({
               {member.role}
             </ThemedText>
 
-            {/* Birth year */}
-            {birthYear.length > 0 && (
-              <ThemedText style={styles.birthYear}>{birthYear}</ThemedText>
+            {/* Life range (birth–death years) */}
+            {lifeRange.length > 0 && (
+              <ThemedText style={styles.birthYear}>{lifeRange}</ThemedText>
             )}
           </Pressable>
         </Animated.View>
@@ -106,20 +98,9 @@ const styles = StyleSheet.create({
     gap: 2,
     ...Shadows.card,
   },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: AsalUsulColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-  },
-  initials: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: AsalUsulColors.textOnPrimary,
-    lineHeight: 22,
+  cardHighlighted: {
+    borderWidth: 2.5,
+    borderColor: AsalUsulColors.primary,
   },
   fullName: {
     fontSize: 12,
