@@ -105,50 +105,52 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        {/* ── Logo + App name + Tagline ──────────────────────────────────── */}
-        <View style={styles.logoSection}>
-          <LogoHeader showTagline logoSize={80} />
+        {/* ── Centered main content ──────────────────────────────────────── */}
+        <View style={styles.centerContent}>
 
-          {/* Decorative divider with leaf */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerLeafText}>🌿</Text>
-            <View style={styles.dividerLine} />
+          {/* ── Logo + App name + Tagline ────────────────────────────────── */}
+          <View style={styles.logoSection}>
+            <LogoHeader showTagline logoSize={80} />
+
+            {/* Decorative divider with leaf */}
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerLeafText}>🌿</Text>
+              <View style={styles.dividerLine} />
+            </View>
           </View>
-        </View>
 
-        {/* ── Welcome heading ────────────────────────────────────────────── */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeHeading}>Selamat Datang</Text>
-          <Text style={styles.welcomeDescription}>
-            Masuk untuk melanjutkan perjalanan keluarga Anda
-          </Text>
-        </View>
-
-        {/* ── Sign-in button + error ─────────────────────────────────────── */}
-        <View style={styles.authSection}>
-          <GoogleSignInButton
-            testID="sign-in-button"
-            onPress={handleSignIn}
-            isLoading={isSigningIn}
-            disabled={isSigningIn}
-          />
-
-          {errorMessage !== null && (
-            <Text testID="error-message" style={styles.errorText}>
-              {errorMessage}
+          {/* ── Welcome heading ──────────────────────────────────────────── */}
+          <View style={styles.welcomeSection}>
+            <Text style={styles.welcomeHeading}>Selamat Datang</Text>
+            <Text style={styles.welcomeDescription}>
+              Masuk untuk melanjutkan perjalanan keluarga Anda
             </Text>
-          )}
-        </View>
+          </View>
 
-        {/* ── Privacy badge ──────────────────────────────────────────────── */}
-        <View style={styles.privacyBadge}>
-          <Text style={styles.privacyIcon}>✓</Text>
-          <Text style={styles.privacyText}>Aman, privat, dan hanya untuk Anda</Text>
-        </View>
+          {/* ── Sign-in button + error ────────────────────────────────────── */}
+          <View style={styles.authSection}>
+            <GoogleSignInButton
+              testID="sign-in-button"
+              onPress={handleSignIn}
+              isLoading={isSigningIn}
+              disabled={isSigningIn}
+            />
 
-        {/* ── Decorative landscape spacer ────────────────────────────────── */}
-        <View style={styles.landscapeSpacer} />
+            {errorMessage !== null && (
+              <Text testID="error-message" style={styles.errorText}>
+                {errorMessage}
+              </Text>
+            )}
+          </View>
+
+          {/* ── Privacy badge ────────────────────────────────────────────── */}
+          <View style={styles.privacyBadge}>
+            <Text style={styles.privacyIcon}>✓</Text>
+            <Text style={styles.privacyText}>Aman, privat, dan hanya untuk Anda</Text>
+          </View>
+
+        </View>
 
         {/* ── Footer consent ─────────────────────────────────────────────── */}
         <View style={styles.footer}>
@@ -188,9 +190,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.five,
-    paddingBottom: Spacing.four,
+    paddingVertical: Spacing.four,
     justifyContent: 'space-between',
+  },
+
+  // Centered main content block
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingBottom: Spacing.four,
   },
 
   // Logo section
@@ -266,12 +274,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: AsalUsulColors.textMuted,
     lineHeight: 18,
-  },
-
-  // Landscape spacer — fills remaining space before footer
-  landscapeSpacer: {
-    flex: 1,
-    minHeight: Spacing.six,
   },
 
   // Footer

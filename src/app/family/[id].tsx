@@ -34,11 +34,13 @@ import { EmptyTreeState } from '@/components/family/EmptyTreeState';
 import { FamilyMemberForm } from '@/components/family/FamilyMemberForm';
 import { FamilySettingsSheet } from '@/components/family/FamilySettingsSheet';
 import { FamilyTreeCanvas } from '@/components/family/FamilyTreeCanvas';
+import { FEATURE_SHARING } from '@/constants/features';
 import { AsalUsulColors, Radii, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useFamilyTreeStore } from '@/store/useFamilyTreeStore';
 import { useMemberStore } from '@/store/useMemberStore';
 import type { FamilyTree, Member } from '@/types/familyTree';
+import { canEditMembers, canManageTree, deriveRole } from '@/utils/roles';
 
 // Stable empty array — avoids creating a new reference on every render when
 // the tree's members haven't been loaded yet, which would cause an infinite
@@ -217,6 +219,17 @@ export default function FamilyTreeDetailScreen() {
     return null;
   }
 
+  // ── Role-based gating (Phase 2 sharing) ────────────────────────────────────
+  // When sharing is disabled, shared trees are never loaded, so own trees
+  // always resolve to 'owner' → full controls (unchanged behavior).
+  const myRole = deriveRole(
+    tree.ownerId,
+    user?.uid,
+    tree.role === 'editor' || tree.role === 'viewer' ? tree.role : null,
+  );
+  const mayEditMembers = canEditMembers(myRole);
+  const mayManageTree = canManageTree(myRole);
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -226,9 +239,9 @@ export default function FamilyTreeDetailScreen() {
         options={{
           headerShown: true,
           title: tree.name,
-          headerRight: () => (
-            <SettingsButton onPress={handleSettingsPress} />
-          ),
+          headerRight: mayManageTree
+            ? () => <SettingsButton onPress={handleSettingsPress} />
+            : undefined,
         }}
       />
 
@@ -236,9 +249,10 @@ export default function FamilyTreeDetailScreen() {
       <View style={styles.content}>
         {treeMembers.length === 0 && !showForm && (
           // State 1: empty tree, form not shown — Requirement 2.1
-          <EmptyTreeState onAddFirstMember={handleShowForm} />
+          // Viewers (no edit rights) see a read-only empty state.
+          <EmptyTreeState onAddFirstMember={mayEditMembers ? handleShowForm : undefined} />
         )}
-        {showForm && (
+        {showForm && mayEditMembers && (
           // State 2: form shown (first member or additional member)
           <FamilyMemberForm
             familyTreeId={treeId}
@@ -255,8 +269,8 @@ export default function FamilyTreeDetailScreen() {
           />
         )}
 
-        {/* FAB — visible when tree has members and form is not open */}
-        {treeMembers.length > 0 && !showForm && (
+        {/* FAB — visible when tree has members, form closed, and user can edit */}
+        {treeMembers.length > 0 && !showForm && mayEditMembers && (
           <AddMemberFAB onPress={handleShowForm} />
         )}
       </View>
@@ -267,6 +281,14 @@ export default function FamilyTreeDetailScreen() {
         onClose={() => setSettingsVisible(false)}
         onEditPress={handleEditPress}
         onDeletePress={handleDeletePress}
+        onManageAccessPress={
+          FEATURE_SHARING && mayManageTree
+            ? () => {
+                setSettingsVisible(false);
+                router.push(`/collaborators/${treeId}`);
+              }
+            : undefined
+        }
       />
 
       {/* ── Edit family modal — Requirements 2.4, 8.3 ─────────────────────── */}

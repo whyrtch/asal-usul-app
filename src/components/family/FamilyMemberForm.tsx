@@ -25,6 +25,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import { DatePickerField } from '@/components/ui/date-picker-field';
+import { PhotoPickerField } from '@/components/ui/photo-picker-field';
 import { AsalUsulColors, Radii, Shadows, Spacing } from '@/constants/theme';
 import { useMemberStore } from '@/store/useMemberStore';
 import type { Member } from '@/types/familyTree';
@@ -37,6 +39,8 @@ export type FormValues = {
   gender: 'male' | 'female' | null;
   role: string;
   birthDate: string;
+  status: 'living' | 'deceased';
+  deathDate: string;
   bio: string;
 };
 
@@ -45,6 +49,7 @@ export type FormErrors = {
   gender?: string;
   role?: string;
   birthDate?: string;
+  deathDate?: string;
 };
 
 /**
@@ -63,6 +68,11 @@ const ROLE_OPTIONS = ['Anak', 'Ayah', 'Ibu', 'Kakek', 'Nenek'] as const;
 const GENDER_OPTIONS: { value: 'male' | 'female'; label: string }[] = [
   { value: 'male', label: 'Laki-laki' },
   { value: 'female', label: 'Perempuan' },
+];
+
+const STATUS_OPTIONS: { value: 'living' | 'deceased'; label: string }[] = [
+  { value: 'living', label: 'Hidup' },
+  { value: 'deceased', label: 'Meninggal' },
 ];
 
 const RELATIONSHIP_OPTIONS: { value: RelationshipType; label: string; hint: string }[] = [
@@ -100,6 +110,14 @@ export function validateForm(values: FormValues): FormErrors {
     !/^\d{4}-\d{2}-\d{2}$/.test(values.birthDate.trim())
   ) {
     errors.birthDate = 'Format tanggal: YYYY-MM-DD';
+  }
+
+  if (
+    typeof values.deathDate === 'string' &&
+    values.deathDate.trim() !== '' &&
+    !/^\d{4}-\d{2}-\d{2}$/.test(values.deathDate.trim())
+  ) {
+    errors.deathDate = 'Format tanggal: YYYY-MM-DD';
   }
 
   return errors;
@@ -172,9 +190,14 @@ export function FamilyMemberForm({
     gender: null,
     role: '',
     birthDate: '',
+    status: 'living',
+    deathDate: '',
     bio: '',
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+
+  // ── Photo state ──────────────────────────────────────────────────────────────
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   // ── Relationship state ──────────────────────────────────────────────────────
   const [relationshipType, setRelationshipType] = useState<RelationshipType | null>(null);
@@ -212,7 +235,12 @@ export function FamilyMemberForm({
       gender: formValues.gender as 'male' | 'female',
       role: formValues.role,
       birthDate: formValues.birthDate.trim() === '' ? null : formValues.birthDate,
-      photoUrl: null,
+      status: formValues.status,
+      deathDate:
+        formValues.status === 'deceased' && formValues.deathDate.trim() !== ''
+          ? formValues.deathDate
+          : null,
+      photoUrl,
       bio: formValues.bio.trim() === '' ? null : formValues.bio,
       ...relationshipFields,
     });
@@ -250,6 +278,13 @@ export function FamilyMemberForm({
               <ThemedText style={styles.dismissLabel}>Batal</ThemedText>
             </Pressable>
           </View>
+
+          {/* ── Photo ───────────────────────────────────────────────────────── */}
+          <PhotoPickerField
+            treeId={familyTreeId}
+            value={photoUrl}
+            onChange={setPhotoUrl}
+          />
 
           {/* ── Full Name ───────────────────────────────────────────────────── */}
           <View style={styles.fieldGroup}>
@@ -332,21 +367,60 @@ export function FamilyMemberForm({
           {/* ── Birth Date ──────────────────────────────────────────────────── */}
           <View style={styles.fieldGroup}>
             <ThemedText style={styles.label}>Tanggal Lahir</ThemedText>
-            <TextInput
-              style={[styles.textInput, formErrors.birthDate ? styles.textInputError : null]}
+            <DatePickerField
               value={formValues.birthDate}
-              onChangeText={(text) => updateField('birthDate', text)}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={AsalUsulColors.textMuted}
-              keyboardType="default"
-              maxLength={10}
-              returnKeyType="next"
-              accessibilityLabel="Tanggal lahir"
+              onChange={(date) => updateField('birthDate', date)}
+              hasError={!!formErrors.birthDate}
+              accessibilityLabel="Pilih tanggal lahir"
             />
             {formErrors.birthDate ? (
               <ThemedText style={styles.errorText}>{formErrors.birthDate}</ThemedText>
             ) : null}
           </View>
+
+          {/* ── Status (Hidup / Meninggal) ──────────────────────────────────── */}
+          <View style={styles.fieldGroup}>
+            <ThemedText style={styles.label}>Status</ThemedText>
+            <View style={styles.genderRow}>
+              {STATUS_OPTIONS.map(({ value, label }) => {
+                const isSelected = formValues.status === value;
+                return (
+                  <Pressable
+                    key={value}
+                    onPress={() => {
+                      updateField('status', value);
+                      // Clear deathDate when switching back to living
+                      if (value === 'living') updateField('deathDate', '');
+                    }}
+                    style={[styles.genderOption, isSelected && styles.genderOptionSelected]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: isSelected }}
+                    accessibilityLabel={label}
+                  >
+                    <ThemedText style={[styles.genderLabel, isSelected && styles.genderLabelSelected]}>
+                      {label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* ── Death Date — only when deceased ─────────────────────────────── */}
+          {formValues.status === 'deceased' && (
+            <View style={styles.fieldGroup}>
+              <ThemedText style={styles.label}>Tanggal Meninggal</ThemedText>
+              <DatePickerField
+                value={formValues.deathDate}
+                onChange={(date) => updateField('deathDate', date)}
+                hasError={!!formErrors.deathDate}
+                accessibilityLabel="Pilih tanggal meninggal"
+              />
+              {formErrors.deathDate ? (
+                <ThemedText style={styles.errorText}>{formErrors.deathDate}</ThemedText>
+              ) : null}
+            </View>
+          )}
 
           {/* ── Bio ─────────────────────────────────────────────────────────── */}
           <View style={styles.fieldGroup}>

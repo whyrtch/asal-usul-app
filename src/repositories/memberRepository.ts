@@ -76,8 +76,9 @@ function familyTreeDocRef(treeId: string): DocumentReference {
  * Maps a Firestore document id and raw `MemberDocument` data to the
  * app-level `Member` interface, converting Timestamps to ISO strings.
  *
- * `photoUrl` and `bio` are not stored in `MemberDocument` — they default
- * to `null` as per the task specification.
+ * `photoUrl` is not yet stored in `MemberDocument` — it defaults to `null`.
+ * `bio`, `status`, and `deathDate` are mapped from the document, defaulting to
+ * `null`/`'living'` for legacy documents that predate these fields.
  *
  * Requirements: 4.7
  */
@@ -89,8 +90,10 @@ function mapDocToMember(id: string, data: MemberDocument): Member {
     gender: data.gender,
     role: data.role,
     birthDate: data.birthDate ?? null,
-    photoUrl: null,
-    bio: null,
+    status: data.status ?? 'living',
+    deathDate: data.deathDate ?? null,
+    photoUrl: data.photoUrl ?? null,
+    bio: data.bio ?? null,
     fatherId: data.fatherId ?? null,
     motherId: data.motherId ?? null,
     spouseIds: data.spouseIds ?? [],
@@ -209,6 +212,10 @@ export async function createMember(
       gender: data.gender,
       role: data.role,
       birthDate: data.birthDate ?? null,
+      status: data.status ?? 'living',
+      deathDate: data.deathDate ?? null,
+      photoUrl: data.photoUrl ?? null,
+      bio: data.bio ?? null,
       fatherId: data.fatherId ?? null,
       motherId: data.motherId ?? null,
       spouseIds: data.spouseIds ?? [],
@@ -279,6 +286,18 @@ export async function updateMember(
   }
   if (patch.birthDate !== undefined) {
     updatePayload['birthDate'] = patch.birthDate;
+  }
+  if (patch.status !== undefined) {
+    updatePayload['status'] = patch.status;
+  }
+  if (patch.deathDate !== undefined) {
+    updatePayload['deathDate'] = patch.deathDate;
+  }
+  if (patch.photoUrl !== undefined) {
+    updatePayload['photoUrl'] = patch.photoUrl;
+  }
+  if (patch.bio !== undefined) {
+    updatePayload['bio'] = patch.bio;
   }
   if (patch.fatherId !== undefined) {
     updatePayload['fatherId'] = patch.fatherId;

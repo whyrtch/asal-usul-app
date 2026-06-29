@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "PR Review Gate (UI/UX + Security Audit)",
+  "description": "Run the UI/UX and security PR auditors on the current changeset before opening a pull request.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Act as tech-lead and run the PR Review Gate before any pull request is opened. Steps:\n1. Determine the base branch (main/master) and compute the changeset with `git diff <base>...HEAD` (fall back to `git diff HEAD` + `git status` if there is no base).\n2. Run the pr-security-auditor on the changeset (delegate via a sub-agent using the instructions in .kiro/agents/pr-security-auditor.md).\n3. Run the pr-ui-ux-auditor on the changeset (delegate via a sub-agent using .kiro/agents/pr-ui-ux-auditor.md). Skip only if the diff has no UI/UX-facing changes, and say so.\n4. Report both verdicts (APPROVE / REQUEST CHANGES / BLOCK) with severity-ranked findings.\n5. If either is BLOCK, do NOT open the PR — list blocking issues to fix first. If either is REQUEST CHANGES, list the High-severity items to resolve. Only when both APPROVE, proceed and include an audit summary in the PR description."
+  }
+}

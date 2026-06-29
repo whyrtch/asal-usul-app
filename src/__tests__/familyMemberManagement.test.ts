@@ -234,6 +234,8 @@ describe('Property 5: resolveRelationships never throws', () => {
     gender: fc.constantFrom('male' as const, 'female' as const),
     role: fc.string(),
     birthDate: fc.option(fc.string(), { nil: null }),
+    status: fc.constantFrom('living' as const, 'deceased' as const),
+    deathDate: fc.option(fc.string(), { nil: null }),
     photoUrl: fc.option(fc.string(), { nil: null }),
     bio: fc.option(fc.string(), { nil: null }),
     fatherId: fc.option(fc.string(), { nil: null }),
