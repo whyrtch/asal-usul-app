@@ -45,32 +45,36 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 // ============================================================================
 
 export const AsalUsulColors = {
-  // Backgrounds
-  backgroundWarm:    '#F5F0E8',
-  backgroundCard:    '#FDFAF4',
-  backgroundOverlay: '#EDE8DC',
+  // Backgrounds — warmer, cleaner, better layer contrast
+  backgroundWarm:    '#F7F2EA',
+  backgroundCard:    '#FFFCF7',
+  backgroundOverlay: '#EBE2D2',
 
-  // Brand
-  primary:           '#1B4332',
-  primaryLight:      '#2D6A4F',
-  primaryMuted:      '#52796F',
+  // Brand — richer teal-emerald for more pop (catchy but still heritage)
+  primary:           '#0D5E48',
+  primaryLight:      '#1A8C6E',
+  primaryMuted:      '#529484',
 
-  // Text
+  // Text — improved contrast
   textHeading:       '#1A1A1A',
-  textBody:          '#3D3D3D',
-  textMuted:         '#8A8070',
+  textBody:          '#2E2E2E',
+  textMuted:         '#7A7060',
   textOnPrimary:     '#FFFFFF',
 
-  // Decorative
-  goldAccent:        '#C9A84C',
-  borderSubtle:      '#E0D9CC',
+  // Accent — warm terracotta for energy & visual pop (CTAs, highlights)
+  terracotta:        '#D4634A',
+  terracottaLight:   '#FDF0EC',
 
-  // Semantic (new)
-  destructive:       '#C0392B',
-  destructiveLight:  '#FDECEA',
-  success:           '#2D6A4F',
-  warning:           '#C9A84C',
-  info:              '#52796F',
+  // Decorative
+  goldAccent:        '#D4A025',
+  borderSubtle:      '#D9CFBF',
+
+  // Semantic
+  destructive:       '#D1383A',
+  destructiveLight:  '#FDEAED',
+  success:           '#1A8C6E',
+  warning:           '#D4A025',
+  info:              '#529484',
 } as const;
 
 export type AsalUsulColor = keyof typeof AsalUsulColors;
@@ -171,24 +175,24 @@ export type RadiusToken = keyof typeof Radii;
 
 export const Shadows = {
   card: {
-    shadowColor:   '#1B4332',
+    shadowColor:   '#0A2E25',
     shadowOffset:  { width: 0, height: 4 },
-    shadowOpacity: 0.10,
-    shadowRadius:  12,
+    shadowOpacity: 0.12,
+    shadowRadius:  14,
     elevation:     6,
   },
   button: {
-    shadowColor:   '#1B4332',
+    shadowColor:   '#0A2E25',
     shadowOffset:  { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius:  16,
+    shadowOpacity: 0.28,
+    shadowRadius:  18,
     elevation:     8,
   },
   elevated: {
-    shadowColor:   '#1B4332',
-    shadowOffset:  { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius:  20,
+    shadowColor:   '#0A2E25',
+    shadowOffset:  { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius:  24,
     elevation:     10,
   },
 } as const;
@@ -222,6 +226,10 @@ export const SemanticColors = {
   primaryForeground: AsalUsulColors.textOnPrimary,
   primaryLight:      AsalUsulColors.primaryLight,
   primaryMuted:      AsalUsulColors.primaryMuted,
+
+  // Accent
+  terracotta:        AsalUsulColors.terracotta,
+  terracottaLight:   AsalUsulColors.terracottaLight,
 
   // Semantic
   destructive:       AsalUsulColors.destructive,

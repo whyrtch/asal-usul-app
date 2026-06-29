@@ -1,6 +1,6 @@
-# Expo Firebase Boilerplate
+# AsalUsul — Pohon Keluarga Digital
 
-A production-ready boilerplate for Expo v56 apps with Firebase Authentication, Google Sign-In, protected routing, and a glassmorphism tab bar. Use this as a starting point for any new Expo project.
+Aplikasi pohon keluarga modern untuk keluarga Indonesia. Dokumentasikan sejarah, silsilah, dan warisan keluarga dalam satu pohon digital yang indah.
 
 ## Stack
 
@@ -9,51 +9,75 @@ A production-ready boilerplate for Expo v56 apps with Firebase Authentication, G
 | Framework | Expo SDK 56 + Expo Router v56 |
 | Language | TypeScript |
 | Auth | Firebase Authentication + Google Sign-In |
-| Navigation | Expo Router `Stack.Protected` + `expo-router/ui` |
-| UI | React Native + Reanimated + expo-blur |
-| State | React Context (AuthContext) |
-| Storage | AsyncStorage (Firebase session persistence) |
+| Navigation | Expo Router (tabs + modal) + Reanimated |
+| UI | shadcn/ui principles adapted for RN, Reanimated 4.x |
+| State | Zustand (stores) + React Context (auth) |
+| Backend | Firebase Firestore + Firebase Storage |
 | Testing | Jest + React Testing Library + fast-check (PBT) |
 
-## Features
+## Fitur
 
-- **Google Sign-In** via `@react-native-google-signin/google-signin`
-- **Firebase Auth** with AsyncStorage persistence (stays logged in after app restart)
-- **Protected routing** — unauthenticated users redirected to login, authenticated users redirected to home
-- **Animated splash screen** with Reanimated keyframe animation
-- **Glassmorphism tab bar** — floating glass bottom navigation with blur effect, spring animations, and dark/light mode support
-- **Auth timeout** — 10s timeout prevents infinite loading state
-- **Full test suite** — unit tests + property-based tests for all correctness properties
+- **Pohon Keluarga Interaktif** — buat, lihat, dan edit pohon keluarga dengan visual canvas
+- **Auth Google** — login cepat dengan akun Google
+- **Soft Auth Gate** — home screen selalu terlihat, login hanya saat perlu (create tree)
+- **UI Primitives** — shadcn-style component system: Button, Card, Sheet, Dialog, Badge, Avatar, dll
+- **Premium Design System** — warm heritage color palette dengan terracotta accent
+- **Contoh Pohon Keluarga** — lihat contoh pohon keluarga tokoh publik (Jokowi, Prabowo) di fitur "Jelajahi"
+- **Berbagi & Kolaborasi** (flag-gated) — undang anggota keluarga sebagai editor/viewer
+- **Mode Luring** (coming soon) — akses pohon keluarga tanpa internet
+- **Monetisasi** (coming soon) — freemium model dengan batasan jumlah pohon
 
 ## Project Structure
 
 ```
 src/
-├── app/
-│   ├── _layout.tsx          # Root layout: AuthProvider + Stack.Protected
-│   ├── login.tsx            # Login screen (Google Sign-In)
+├── app/                  # Expo Router pages
+│   ├── _layout.tsx       # Root layout: AuthProvider + soft auth gate
+│   ├── login.tsx         # Login screen (Google Sign-In)
+│   ├── family/[id].tsx   # Family tree detail screen
+│   ├── invitations.tsx   # Sharing invitations (flag-gated)
 │   └── (tabs)/
-│       ├── _layout.tsx      # Tab layout → delegates to AppTabs
-│       ├── index.tsx        # Home screen (user profile)
-│       └── setting.tsx      # Setting screen (logout)
+│       ├── _layout.tsx   # Tab layout
+│       ├── index.tsx     # Home screen (daftar pohon keluarga)
+│       └── setting.tsx   # Setting screen (akun, tentang app)
 ├── components/
-│   ├── app-tabs.tsx         # Glassmorphism tab bar (native)
-│   └── app-tabs.web.tsx     # Tab bar (web)
+│   ├── ui/               # shadcn-style primitives (Button, Card, Sheet, dll)
+│   ├── family/           # Family tree components
+│   └── member/           # Member components
+├── constants/
+│   └── theme.ts          # Design system: colors, spacing, typography, shadows
 ├── context/
-│   └── auth-context.tsx     # AuthContext + AuthProvider + useAuth
-├── lib/
-│   └── firebase.ts          # Firebase singleton initialization
-└── constants/
-    └── theme.ts             # Colors, spacing, fonts
+│   └── auth-context.tsx  # Auth state management
+├── store/                # Zustand stores
+├── repositories/         # Firestore data access layer
+├── services/             # Firebase, analytics, entitlements
+├── hooks/                # Custom hooks (photo upload, dll)
+└── types/                # TypeScript types & interfaces
 ```
+
+## Theme & Color System
+
+AsalUsul menggunakan palette warna **jewel-tone** yang hangat dan premium:
+
+| Role | Color | Hex |
+|------|-------|-----|
+| Primary | Rich Teal-Emerald | `#0D5E48` |
+| Primary Light | Bright Emerald | `#1A8C6E` |
+| Accent | Warm Terracotta | `#D4634A` |
+| Gold | Warm Gold | `#D4A025` |
+| Background | Warm Beige | `#F7F2EA` |
+| Card | Cream Off-white | `#FFFCF7` |
+| Text Body | Dark Charcoal | `#2E2E2E` |
+
+Dokumentasi lengkap: [docs/theme-color-system.md](docs/theme-color-system.md)
 
 ## Getting Started
 
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/whyrtch/auth-fb-boilerplate.git my-app
-cd my-app
+git clone https://github.com/whyrtch/asal-usul-app.git
+cd asal-usul-app
 yarn install
 ```
 
@@ -61,9 +85,8 @@ yarn install
 
 1. Create a project at [Firebase Console](https://console.firebase.google.com)
 2. Enable **Authentication** → Sign-in method → **Google**
-3. Add an Android app with your package name
-4. Download `google-services.json` → place at project root
-5. For iOS: download `GoogleService-Info.plist` → place at project root
+3. Enable **Cloud Firestore**
+4. Enable **Storage** (for photo uploads)
 
 ### 3. Configure environment variables
 
@@ -72,28 +95,13 @@ cp .env.example .env
 ```
 
 Fill in `.env` with your Firebase project values:
+- `EXPO_PUBLIC_FIREBASE_API_KEY`
+- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+- `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- etc.
 
-```env
-EXPO_PUBLIC_FIREBASE_API_KEY=
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
-EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-EXPO_PUBLIC_FIREBASE_APP_ID=
-EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID=
-```
-
-### 4. Update app config
-
-In `app.json`, update:
-- `expo.name` — your app name
-- `expo.slug` — your app slug
-- `expo.android.package` — your Android package name (e.g. `com.yourcompany.appname`)
-- `expo.scheme` — your deep link scheme
-
-### 5. Run development build
-
-> ⚠️ `@react-native-google-signin/google-signin` requires a development build — it does not work in Expo Go.
+### 4. Run development build
 
 ```bash
 # Android
@@ -101,33 +109,21 @@ npx expo run:android
 
 # iOS
 npx expo run:ios
+
+# Expo Go (limited native modules)
+npx expo start
 ```
 
-### 6. Register SHA-1 fingerprint (Android)
+> ⚠️ Google Sign-In requires a development build — does not work in Expo Go.
 
-Get your debug SHA-1:
-```bash
-keytool -list -v \
-  -keystore android/app/debug.keystore \
-  -alias androiddebugkey \
-  -storepass android -keypass android
+### 5. Feature Flags
+
+Setel di `.env`:
+
+```env
+EXPO_PUBLIC_DEV_SEED=false        # Tampilkan tombol "Muat Contoh" (Jokowi/Prabowo)
+EXPO_PUBLIC_ENABLE_PHOTO_UPLOAD=false  # Aktifkan upload foto anggota
 ```
-
-Add the SHA-1 to Firebase Console → Project Settings → Your apps → Android app → SHA certificate fingerprints.
-
-Then download the updated `google-services.json` and replace the file at project root.
-
-## Customizing for Your Project
-
-| What to change | Where |
-|----------------|-------|
-| App name & package | `app.json` |
-| Firebase config | `.env` |
-| Tab items (add/remove tabs) | `src/components/app-tabs.tsx` → `TABS` array |
-| Home screen content | `src/app/(tabs)/index.tsx` |
-| Setting screen content | `src/app/(tabs)/setting.tsx` |
-| Theme colors | `src/constants/theme.ts` |
-| Auth logic | `src/context/auth-context.tsx` |
 
 ## Running Tests
 
@@ -135,39 +131,41 @@ Then download the updated `google-services.json` and replace the file at project
 yarn test
 ```
 
-Covers:
-- Firebase singleton initialization (Property 4)
-- Auth state listener cleanup (Property 1)
-- Auth-based routing (Property 2)
-- Logout always clears user state (Property 3)
-- idToken forwarding to Firebase credential (Property 6)
-- Splash screen hiding (Property 7)
-- User data display with fallback (Property 5)
+Test suite mencakup:
+- 48 test suites
+- 437+ unit & property-based tests
+- Coverage: layout, auth, stores, repositories, components, utils
+
+## Customizing
+
+| What | Where |
+|------|-------|
+| Theme colors | `src/constants/theme.ts` |
+| UI primitives | `src/components/ui/` |
+| Tab items | `src/app/(tabs)/_layout.tsx` |
+| Feature flags | `.env` + `src/constants/features.ts` |
 
 ## Dependencies
 
-```bash
-# Core
-expo ~56.0.4
-expo-router ~56.2.6
-firebase ^12.13.0
-@react-native-google-signin/google-signin ^16.1.2
-@react-native-async-storage/async-storage 2.2.0
+### Core
+- `expo ~56.0.4`
+- `expo-router ~56.2.6`
+- `firebase ^12.13.0`
+- `react-native-reanimated 4.3.1`
 
-# UI
-expo-blur ~56.0.3
-expo-image ~56.0.9
-expo-splash-screen ~56.0.10
-react-native-reanimated 4.3.1
-react-native-safe-area-context ~5.7.0
-@expo/vector-icons ^15.0.2
+### UI
+- `expo-image ~56.0.9`
+- `expo-image-picker ~56.0.18`
+- `@expo/vector-icons ^15.0.2`
+- `react-native-safe-area-context ~5.7.0`
 
-# Testing
-jest ~29.7.0
-jest-expo ~56.0.4
-@testing-library/react-native ^13.3.3
-fast-check ^4.8.0
-```
+### State & Data
+- `zustand ^5.0.0`
+
+### Testing
+- `jest ~29.7.0`
+- `@testing-library/react-native ^13.3.3`
+- `fast-check ^4.8.0`
 
 ## License
 
