@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0D5E48;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1A8C6E;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="markGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FFFCF7;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="248" fill="url(#bgGrad)"/>
+
+  <!-- Outer ring (subtle) -->
+  <circle cx="256" cy="256" r="248" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="2"/>
+
+  <!-- ===== LOGO MARK: Stylized "A" with Root Motif ===== -->
+
+  <!-- Left stem of A — rises from root to top -->
+  <path d="M256,380 L150,80" stroke="url(#markGrad)" stroke-width="22" stroke-linecap="round" fill="none"/>
+
+  <!-- Right stem of A — rises from root to top -->
+  <path d="M256,380 L362,80" stroke="url(#markGrad)" stroke-width="22" stroke-linecap="round" fill="none"/>
+
+  <!-- Crossbar of A — left branch extending out -->
+  <path d="M180,210 L256,210" stroke="url(#markGrad)" stroke-width="18" stroke-linecap="round" fill="none"/>
+
+  <!-- Crossbar of A — right branch extending out -->
+  <path d="M256,210 L332,210" stroke="url(#markGrad)" stroke-width="18" stroke-linecap="round" fill="none"/>
+
+  <!-- Small left root at bottom -->
+  <path d="M256,380 L220,440" stroke="url(#markGrad)" stroke-width="14" stroke-linecap="round" fill="none"/>
+  <path d="M220,440 L195,465" stroke="url(#markGrad)" stroke-width="10" stroke-linecap="round" fill="none"/>
+
+  <!-- Small right root at bottom -->
+  <path d="M256,380 L292,440" stroke="url(#markGrad)" stroke-width="14" stroke-linecap="round" fill="none"/>
+  <path d="M292,440 L317,465" stroke="url(#markGrad)" stroke-width="10" stroke-linecap="round" fill="none"/>
+
+  <!-- Center negative space: subtle leaf/diamond in the A -->
+  <path d="M256,130 L226,210 L256,290 L286,210 Z" fill="#0D5E48" opacity="0.85"/>
+
+  <!-- Small accent dot at top (like a bud/growth point) -->
+  <circle cx="256" cy="80" r="8" fill="#D4A025"/>
+
+</svg>

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0D5E48;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1A8C6E;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Full background -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bgGrad)"/>
+
+  <!-- Subtle outer border -->
+  <rect x="8" y="8" width="1008" height="1008" rx="220" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="4"/>
+
+  <!-- ===== LOGO MARK: Centered "A" with Root Motif ===== -->
+
+  <!-- Left stem -->
+  <path d="M512,720 L300,160" stroke="#FFFFFF" stroke-width="44" stroke-linecap="round" fill="none"/>
+  <!-- Right stem -->
+  <path d="M512,720 L724,160" stroke="#FFFFFF" stroke-width="44" stroke-linecap="round" fill="none"/>
+
+  <!-- Left crossbar branch -->
+  <path d="M356,420 L512,420" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" fill="none"/>
+  <!-- Right crossbar branch -->
+  <path d="M512,420 L668,420" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" fill="none"/>
+
+  <!-- Left root -->
+  <path d="M512,720 L440,840" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" fill="none"/>
+  <path d="M440,840 L390,890" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" fill="none"/>
+
+  <!-- Right root -->
+  <path d="M512,720 L584,840" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" fill="none"/>
+  <path d="M584,840 L634,890" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" fill="none"/>
+
+  <!-- Negative space diamond in the A -->
+  <path d="M512,260 L452,420 L512,580 L572,420 Z" fill="#0D5E48" opacity="0.85"/>
+
+  <!-- Gold accent dot at top -->
+  <circle cx="512" cy="160" r="16" fill="#D4A025"/>
+
+</svg>

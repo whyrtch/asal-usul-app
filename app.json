@@ -15,7 +15,7 @@
       "package": "com.asalusul",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
+        "backgroundColor": "#0D5E48",
         "foregroundImage": "./assets/expo.icon/Assets/adaptive-icon.png"
       },
       "predictiveBackGestureEnabled": false
@@ -29,7 +29,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#0D5E48",
           "android": {
             "image": "./assets/expo.icon/Assets/splash-icon.png",
             "imageWidth": 642
