@@ -22,6 +22,8 @@ import {
 import Animated, { SlideInDown } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import { DatePickerField } from '@/components/ui/date-picker-field';
+import { PhotoPickerField } from '@/components/ui/photo-picker-field';
 import { AsalUsulColors, Radii, Shadows, Spacing } from '@/constants/theme';
 import type { EditMemberFormErrors, Member } from '@/types/familyTree';
 import { validateMemberForm } from '@/utils/validationUtils';
@@ -33,6 +35,11 @@ const ROLE_OPTIONS = ['Anak', 'Ayah', 'Ibu', 'Kakek', 'Nenek'] as const;
 const GENDER_OPTIONS: { value: 'male' | 'female'; label: string }[] = [
   { value: 'male', label: 'Laki-laki' },
   { value: 'female', label: 'Perempuan' },
+];
+
+const STATUS_OPTIONS: { value: 'living' | 'deceased'; label: string }[] = [
+  { value: 'living', label: 'Hidup' },
+  { value: 'deceased', label: 'Meninggal' },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -56,7 +63,10 @@ export function EditMemberModal({
   const [gender, setGender] = useState<'male' | 'female'>(member.gender);
   const [role, setRole] = useState(member.role);
   const [birthDate, setBirthDate] = useState(member.birthDate ?? '');
+  const [status, setStatus] = useState<'living' | 'deceased'>(member.status);
+  const [deathDate, setDeathDate] = useState(member.deathDate ?? '');
   const [bio, setBio] = useState(member.bio ?? '');
+  const [photoUrl, setPhotoUrl] = useState<string | null>(member.photoUrl);
   const [errors, setErrors] = useState<EditMemberFormErrors>({});
 
   // Reset local state whenever the modal opens with fresh member values
@@ -65,12 +75,15 @@ export function EditMemberModal({
     setGender(member.gender);
     setRole(member.role);
     setBirthDate(member.birthDate ?? '');
+    setStatus(member.status);
+    setDeathDate(member.deathDate ?? '');
     setBio(member.bio ?? '');
+    setPhotoUrl(member.photoUrl);
     setErrors({});
   }
 
   function handleSave() {
-    const validationErrors = validateMemberForm({ fullName, gender, role, birthDate, bio });
+    const validationErrors = validateMemberForm({ fullName, gender, role, birthDate, status, deathDate, bio });
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -97,9 +110,24 @@ export function EditMemberModal({
       patch.birthDate = resolvedBirthDate;
     }
 
+    if (status !== member.status) {
+      patch.status = status;
+    }
+
+    // Death date is only meaningful when deceased; clear it otherwise.
+    const resolvedDeathDate =
+      status === 'deceased' && deathDate.trim() !== '' ? deathDate.trim() : null;
+    if (resolvedDeathDate !== member.deathDate) {
+      patch.deathDate = resolvedDeathDate;
+    }
+
     const resolvedBio = bio.trim() === '' ? null : bio.trim();
     if (resolvedBio !== member.bio) {
       patch.bio = resolvedBio;
+    }
+
+    if (photoUrl !== member.photoUrl) {
+      patch.photoUrl = photoUrl;
     }
 
     onSave(patch);
@@ -154,6 +182,13 @@ export function EditMemberModal({
                 <ThemedText style={styles.cancelLabel}>Batal</ThemedText>
               </Pressable>
             </View>
+
+            {/* ── Photo ──────────────────────────────────────────────────────── */}
+            <PhotoPickerField
+              treeId={member.familyTreeId}
+              value={photoUrl}
+              onChange={setPhotoUrl}
+            />
 
             {/* ── Full Name ──────────────────────────────────────────────────── */}
             <View style={styles.fieldGroup}>
@@ -249,24 +284,68 @@ export function EditMemberModal({
             {/* ── Birth Date ────────────────────────────────────────────────── */}
             <View style={styles.fieldGroup}>
               <ThemedText style={styles.label}>Tanggal Lahir</ThemedText>
-              <TextInput
-                style={[styles.textInput, errors.birthDate ? styles.textInputError : null]}
+              <DatePickerField
                 value={birthDate}
-                onChangeText={(text) => {
-                  setBirthDate(text);
+                onChange={(date) => {
+                  setBirthDate(date);
                   if (errors.birthDate) setErrors((prev) => ({ ...prev, birthDate: undefined }));
                 }}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={AsalUsulColors.textMuted}
-                keyboardType="default"
-                maxLength={10}
-                returnKeyType="next"
-                accessibilityLabel="Tanggal lahir"
+                hasError={!!errors.birthDate}
+                accessibilityLabel="Pilih tanggal lahir"
               />
               {errors.birthDate ? (
                 <ThemedText style={styles.errorText}>{errors.birthDate}</ThemedText>
               ) : null}
             </View>
+
+            {/* ── Status (Hidup / Meninggal) ───────────────────────────────── */}
+            <View style={styles.fieldGroup}>
+              <ThemedText style={styles.label}>Status</ThemedText>
+              <View style={styles.genderRow}>
+                {STATUS_OPTIONS.map(({ value, label }) => {
+                  const isSelected = status === value;
+                  return (
+                    <Pressable
+                      key={value}
+                      onPress={() => {
+                        setStatus(value);
+                        if (value === 'living') setDeathDate('');
+                        if (errors.deathDate) setErrors((prev) => ({ ...prev, deathDate: undefined }));
+                      }}
+                      style={[styles.genderOption, isSelected && styles.genderOptionSelected]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: isSelected }}
+                      accessibilityLabel={label}
+                    >
+                      <ThemedText
+                        style={[styles.genderLabel, isSelected && styles.genderLabelSelected]}
+                      >
+                        {label}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* ── Death Date — only when deceased ──────────────────────────── */}
+            {status === 'deceased' && (
+              <View style={styles.fieldGroup}>
+                <ThemedText style={styles.label}>Tanggal Meninggal</ThemedText>
+                <DatePickerField
+                  value={deathDate}
+                  onChange={(date) => {
+                    setDeathDate(date);
+                    if (errors.deathDate) setErrors((prev) => ({ ...prev, deathDate: undefined }));
+                  }}
+                  hasError={!!errors.deathDate}
+                  accessibilityLabel="Pilih tanggal meninggal"
+                />
+                {errors.deathDate ? (
+                  <ThemedText style={styles.errorText}>{errors.deathDate}</ThemedText>
+                ) : null}
+              </View>
+            )}
 
             {/* ── Bio ───────────────────────────────────────────────────────── */}
             <View style={styles.fieldGroup}>

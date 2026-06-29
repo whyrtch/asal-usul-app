@@ -42,6 +42,7 @@ import type {
     FamilyTreeDocument,
     UpdateFamilyTreeInput,
 } from '@/types/firestore';
+import { fetchSharedTreeRefs } from './accessRepository';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -301,4 +302,31 @@ export async function deleteFamilyTree(treeId: string): Promise<void> {
 
   // STEP 4: Commit atomically.
   await batch.commit();
+}
+
+/**
+ * Fetches family trees shared with `uid` (Phase 2 sharing).
+ *
+ * Resolves access refs via `fetchSharedTreeRefs` (collectionGroup query), then
+ * reads each parent tree and attaches the derived `role`. Trees that no longer
+ * exist (stale access docs) are silently skipped.
+ *
+ * Returns an empty array for an empty/blank `uid`.
+ *
+ * @param uid - Firebase Auth UID of the current user.
+ * @returns Array of shared `FamilyTree` objects, each with `role` set.
+ */
+export async function fetchSharedFamilyTrees(uid: string): Promise<FamilyTree[]> {
+  if (!uid || uid.trim().length === 0) return [];
+
+  const refs = await fetchSharedTreeRefs(uid);
+
+  const trees = await Promise.all(
+    refs.map(async ({ treeId, role }): Promise<FamilyTree | null> => {
+      const tree = await getFamilyTree(treeId);
+      return tree ? { ...tree, role } : null;
+    }),
+  );
+
+  return trees.filter((t): t is FamilyTree => t !== null);
 }

@@ -13,6 +13,7 @@ import {
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { auth } from '../lib/firebase';
+import { AnalyticsEvents, logEvent, recordError, setAnalyticsUserId } from '../services/analytics';
 import { upsertUserDocument } from '../services/firebase/auth';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -126,6 +127,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       // Sync uid into useAuthStore (Requirements: 6.5)
       useAuthStore.getState().setUid(firebaseUser?.uid ?? null);
+      // Associate analytics/crash reports with the current user (or clear it).
+      setAnalyticsUserId(firebaseUser?.uid ?? null);
     });
 
     // ── Cleanup on unmount (Requirements: 3.1) ────────────────────────────────
@@ -183,6 +186,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Sync uid into useAuthStore (Requirements: 6.5)
       useAuthStore.getState().setUid(firebaseUser.user.uid);
 
+      // Analytics: successful interactive sign-in.
+      logEvent(AnalyticsEvents.SIGN_IN);
+
       // Upsert Firestore user document — failure must not block navigation (Requirement 1.4)
       try {
         await upsertUserDocument(firebaseUser.user);
@@ -190,6 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('[AuthContext] upsertUserDocument failed:', upsertError);
       }
     } catch (error: unknown) {
+      recordError(error, { op: 'signInWithGoogle' });
       if (isErrorWithCode(error)) {
         // Sign-in already in progress — ignore silently.
         if (error.code === statusCodes.IN_PROGRESS) {
@@ -264,6 +271,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       // Clear useAuthStore auth state (Requirements: 6.5)
       useAuthStore.getState().clearAuth();
+      // Analytics: sign-out + detach user id.
+      logEvent(AnalyticsEvents.SIGN_OUT);
+      setAnalyticsUserId(null);
     }
   };
 

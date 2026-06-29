@@ -61,6 +61,16 @@ export function FamilyTreeCard({ item, onPress }: FamilyTreeCardProps) {
           <UIText variant="small" style={styles.date}>
             {formatRelativeDate(item.createdAt)}
           </UIText>
+
+          {/* Shared badge — shown for trees shared with the current user */}
+          {(item.role === 'editor' || item.role === 'viewer') && (
+            <View style={styles.sharedBadge}>
+              <Ionicons name="people" size={11} color={AsalUsulColors.primaryMuted} />
+              <UIText variant="small" style={styles.sharedBadgeText}>
+                {item.role === 'editor' ? 'Dibagikan · Editor' : 'Dibagikan · Lihat'}
+              </UIText>
+            </View>
+          )}
         </View>
 
         {/* Right chevron */}
@@ -107,5 +117,15 @@ const styles = StyleSheet.create({
   },
   date: {
     color: AsalUsulColors.textMuted,
+  },
+  sharedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  sharedBadgeText: {
+    color: AsalUsulColors.primaryMuted,
+    fontWeight: '600',
   },
 });

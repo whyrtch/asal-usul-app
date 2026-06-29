@@ -1,8 +1,8 @@
-import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { MemberAvatar } from '@/components/ui/member-avatar';
 import { UIText } from '@/components/ui/text';
-import { AsalUsulColors, Spacing } from '@/constants/theme';
+import { AsalUsulColors, Radii, Spacing } from '@/constants/theme';
 import { Member } from '@/types/familyTree';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -28,6 +28,8 @@ function formatBirthDate(birthDate: string | null): string {
 export function MemberProfileCard({ member }: MemberProfileCardProps) {
   const genderIcon = member.gender === 'male' ? '♂' : '♀';
   const birthDateText = formatBirthDate(member.birthDate);
+  const isDeceased = member.status === 'deceased';
+  const deathDateText = isDeceased ? formatBirthDate(member.deathDate) : null;
 
   return (
     <Animated.View entering={FadeInDown.duration(400).delay(100)}>
@@ -35,7 +37,7 @@ export function MemberProfileCard({ member }: MemberProfileCardProps) {
         <CardContent style={styles.cardContent}>
           {/* Avatar + gender icon row */}
           <View style={styles.avatarRow}>
-            <Avatar name={member.fullName} size={80} variant="default" />
+            <MemberAvatar fullName={member.fullName} photoUrl={member.photoUrl} size={80} />
             <Text style={styles.genderIcon}>{genderIcon}</Text>
           </View>
 
@@ -49,10 +51,24 @@ export function MemberProfileCard({ member }: MemberProfileCardProps) {
             {member.role}
           </Badge>
 
+          {/* Deceased badge — only when deceased */}
+          {isDeceased && (
+            <View style={styles.deceasedBadge}>
+              <UIText variant="small" style={styles.deceasedText}>Almarhum/Almarhumah</UIText>
+            </View>
+          )}
+
           {/* Birth date */}
           <UIText variant="small" style={styles.birthDate}>
-            {birthDateText}
+            Lahir: {birthDateText}
           </UIText>
+
+          {/* Death date — only when deceased */}
+          {isDeceased && (
+            <UIText variant="small" style={styles.birthDate}>
+              Meninggal: {deathDateText}
+            </UIText>
+          )}
         </CardContent>
       </Card>
     </Animated.View>
@@ -70,7 +86,7 @@ const styles = StyleSheet.create({
   avatarRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginBottom: Spacing.one,
+    marginBottom: Spacing.three,
   },
   genderIcon: {
     fontSize: 22,
@@ -85,6 +101,18 @@ const styles = StyleSheet.create({
   roleBadge: {
     alignSelf: 'center',
     marginBottom: 0,
+  },
+  deceasedBadge: {
+    borderRadius: Radii.pill,
+    backgroundColor: AsalUsulColors.backgroundOverlay,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    marginBottom: Spacing.two,
+  },
+  deceasedText: {
+    fontSize: 12,
+    color: AsalUsulColors.textMuted,
+    fontWeight: '600',
   },
   birthDate: {
     color: AsalUsulColors.textMuted,

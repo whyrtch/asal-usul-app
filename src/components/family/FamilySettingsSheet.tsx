@@ -26,6 +26,11 @@ export interface FamilySettingsSheetProps {
   onEditPress: () => void;
   /** Called when the user taps "Hapus Keluarga". */
   onDeletePress: () => void;
+  /**
+   * Called when the user taps "Kelola Akses". When omitted, the row is hidden
+   * (e.g. sharing disabled). Owner-only entry to collaborator management.
+   */
+  onManageAccessPress?: () => void;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -46,6 +51,7 @@ export function FamilySettingsSheet({
   onClose,
   onEditPress,
   onDeletePress,
+  onManageAccessPress,
 }: FamilySettingsSheetProps) {
   return (
     <Sheet visible={visible} onClose={onClose} overlayLabel="Tutup menu pengaturan">
@@ -64,6 +70,27 @@ export function FamilySettingsSheet({
         />
         <UIText variant="p" style={styles.rowLabel}>Edit Keluarga</UIText>
       </Pressable>
+
+      {/* ── Manage access row (owner + sharing enabled only) ──────────────── */}
+      {onManageAccessPress && (
+        <>
+          <View style={styles.divider} />
+          <Pressable
+            onPress={onManageAccessPress}
+            style={({ pressed }) => [styles.actionRow, pressed && styles.actionRowPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Kelola Akses"
+          >
+            <Ionicons
+              name="people-outline"
+              size={22}
+              color={AsalUsulColors.textBody}
+              style={styles.rowIcon}
+            />
+            <UIText variant="p" style={styles.rowLabel}>Kelola Akses</UIText>
+          </Pressable>
+        </>
+      )}
 
       {/* Subtle divider */}
       <View style={styles.divider} />

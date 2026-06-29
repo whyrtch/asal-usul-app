@@ -73,6 +73,14 @@ export function validateMemberForm(values: EditMemberFormValues): EditMemberForm
     }
   }
 
+  // deathDate is optional; only relevant when status is 'deceased'.
+  // When provided it must match YYYY-MM-DD.
+  if (values.deathDate && values.deathDate.trim().length > 0) {
+    if (!BIRTH_DATE_REGEX.test(values.deathDate.trim())) {
+      errors.deathDate = 'Format tanggal meninggal harus YYYY-MM-DD';
+    }
+  }
+
   return errors;
 }
 

@@ -11,34 +11,17 @@
  * @module src/store/useMemberStore
  */
 
+import { classifyError } from '@/constants/errorMessages';
 import {
     fetchMembers,
     createMember as repoCreateMember,
     deleteMember as repoDeleteMember,
     updateMember as repoUpdateMember,
 } from '@/repositories/memberRepository';
-import { isNetworkError, isPermissionError } from '@/services/firebase/firestore';
+import { AnalyticsEvents, logEvent, recordError } from '@/services/analytics';
 import type { Member } from '@/types/familyTree';
 import type { CreateMemberInput } from '@/types/firestore';
 import { create } from 'zustand';
-
-// ---------------------------------------------------------------------------
-// Localized error messages (Requirements: 5.4, 5.6)
-// ---------------------------------------------------------------------------
-
-const ERROR_PERMISSION = 'Akses ditolak. Silakan masuk kembali.';
-const ERROR_NETWORK = 'Tidak ada koneksi internet.';
-const ERROR_GENERIC = 'Terjadi kesalahan. Silakan coba lagi.';
-
-// ---------------------------------------------------------------------------
-// Helper: classify error to localized message
-// ---------------------------------------------------------------------------
-
-function classifyError(err: unknown): string {
-  if (isPermissionError(err)) return ERROR_PERMISSION;
-  if (isNetworkError(err)) return ERROR_NETWORK;
-  return ERROR_GENERIC;
-}
 
 // ---------------------------------------------------------------------------
 // Store state and actions interfaces
@@ -140,6 +123,10 @@ export const useMemberStore = create<MemberStore>()((set, get) => ({
         gender: data.gender,
         role: data.role,
         birthDate: data.birthDate ?? null,
+        status: data.status ?? 'living',
+        deathDate: data.deathDate ?? null,
+        photoUrl: data.photoUrl ?? null,
+        bio: data.bio ?? null,
         fatherId: data.fatherId ?? null,
         motherId: data.motherId ?? null,
         spouseIds: data.spouseIds ?? [],
@@ -159,8 +146,12 @@ export const useMemberStore = create<MemberStore>()((set, get) => ({
           },
         };
       });
+
+      // Analytics: member successfully added (funnel + photo-attach signal)
+      logEvent(AnalyticsEvents.MEMBER_ADDED, { hasPhoto: !!data.photoUrl });
     } catch (err) {
       // STEP 6: Rollback — remove optimistic entry, set error (Req 4.3)
+      recordError(err, { op: 'addMember', treeId });
       set((state) => {
         const members = state.membersByTreeId[treeId] ?? [];
         return {
@@ -243,8 +234,10 @@ export const useMemberStore = create<MemberStore>()((set, get) => ({
     try {
       // STEP 2: Delete from Firestore via repository (handles relationship cleanup)
       await repoDeleteMember(treeId, memberId);
+      logEvent(AnalyticsEvents.MEMBER_DELETED);
     } catch (err) {
       // STEP 3: Rollback — reload from Firestore to restore consistent state
+      recordError(err, { op: 'deleteMember', treeId, memberId });
       try {
         await get().loadMembers(treeId);
       } catch {

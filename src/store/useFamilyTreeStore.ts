@@ -1,20 +1,15 @@
+import { classifyError } from '@/constants/errorMessages';
+import { FEATURE_SHARING } from '@/constants/features';
 import {
     fetchFamilyTrees,
+    fetchSharedFamilyTrees,
     createFamilyTree as repoCreateFamilyTree,
     deleteFamilyTree as repoDeleteFamilyTree,
-    updateFamilyTree as repoUpdateFamilyTree,
+    updateFamilyTree as repoUpdateFamilyTree
 } from '@/repositories/familyTreeRepository';
-import { isNetworkError, isPermissionError } from '@/services/firebase/firestore';
+import { AnalyticsEvents, logEvent, recordError } from '@/services/analytics';
 import { create } from 'zustand';
 import type { FamilyTree, FamilyTreeStore } from '../types/familyTree';
-
-// ---------------------------------------------------------------------------
-// Localized error messages (Requirements: 5.4, 5.6)
-// ---------------------------------------------------------------------------
-
-const ERROR_PERMISSION = 'Akses ditolak. Silakan masuk kembali.';
-const ERROR_NETWORK = 'Tidak ada koneksi internet.';
-const ERROR_GENERIC = 'Terjadi kesalahan. Silakan coba lagi.';
 
 // ---------------------------------------------------------------------------
 // Store
@@ -46,22 +41,24 @@ export const useFamilyTreeStore = create<FamilyTreeStore>()((set) => ({
       // STEP 2: Fetch from Firestore via repository
       const trees = await fetchFamilyTrees(uid);
 
+      // STEP 2b: When sharing is enabled, also load trees shared with this user
+      // and merge them (owned trees + shared trees). Shared fetch failure must
+      // not break the owned-trees load.
+      let shared: FamilyTree[] = [];
+      if (FEATURE_SHARING) {
+        try {
+          shared = await fetchSharedFamilyTrees(uid);
+        } catch (sharedErr) {
+          recordError(sharedErr, { op: 'fetchSharedFamilyTrees' });
+        }
+      }
+
       // STEP 3: Replace store state with fetched data (Req 2.6)
-      set({ familyTrees: trees, loading: false });
+      set({ familyTrees: [...trees, ...shared], loading: false });
     } catch (err) {
       // STEP 4: Classify error and preserve existing familyTrees (Req 2.7)
-      let message: string;
-
-      if (isPermissionError(err)) {
-        // Req 5.4: permission-denied → localized message
-        // Note: signOut is handled by the screen layer (cannot import AuthContext here)
-        message = ERROR_PERMISSION;
-      } else if (isNetworkError(err)) {
-        // Req 5.6: network error → localized message
-        message = ERROR_NETWORK;
-      } else {
-        message = ERROR_GENERIC;
-      }
+      // Note: signOut is handled by the screen layer (cannot import AuthContext here)
+      const message = classifyError(err);
 
       // Preserve existing familyTrees on error (Req 2.7)
       set((state) => ({ loading: false, error: message, familyTrees: state.familyTrees }));
@@ -108,17 +105,13 @@ export const useFamilyTreeStore = create<FamilyTreeStore>()((set) => ({
           t.id === tempId ? realTree : t
         ),
       }));
+
+      // Analytics: family tree successfully created (funnel)
+      logEvent(AnalyticsEvents.TREE_CREATED);
     } catch (err) {
       // STEP 5: Rollback — remove optimistic entry, restore pre-call state (Req 3.3)
-      let message: string;
-
-      if (isPermissionError(err)) {
-        message = ERROR_PERMISSION;
-      } else if (isNetworkError(err)) {
-        message = ERROR_NETWORK;
-      } else {
-        message = ERROR_GENERIC;
-      }
+      recordError(err, { op: 'createFamilyTree' });
+      const message = classifyError(err);
 
       set((state) => ({
         familyTrees: state.familyTrees.filter((t) => t.id !== tempId),
@@ -162,15 +155,7 @@ export const useFamilyTreeStore = create<FamilyTreeStore>()((set) => ({
       await repoUpdateFamilyTree(treeId, patch);
     } catch (err) {
       // STEP 4: Revert to pre-call state on failure (Req 3.5)
-      let message: string;
-
-      if (isPermissionError(err)) {
-        message = ERROR_PERMISSION;
-      } else if (isNetworkError(err)) {
-        message = ERROR_NETWORK;
-      } else {
-        message = ERROR_GENERIC;
-      }
+      const message = classifyError(err);
 
       set((state) => ({
         familyTrees: previousEntry
@@ -198,24 +183,16 @@ export const useFamilyTreeStore = create<FamilyTreeStore>()((set) => ({
     try {
       // STEP 2: Delete from Firestore via repository (cascade deletes members) (Req 3.8)
       await repoDeleteFamilyTree(treeId);
+      logEvent(AnalyticsEvents.TREE_DELETED);
     } catch (err) {
       // STEP 3: Rollback — reload from Firestore to restore consistent state (Req 3.9)
+      recordError(err, { op: 'deleteFamilyTree', treeId });
       try {
         // Use the store's own get() to call loadFamilyTrees
         await useFamilyTreeStore.getState().loadFamilyTrees(uid);
       } catch (reloadErr) {
         // If reload also fails, set error (Req 3.9)
-        let message: string;
-
-        if (isPermissionError(reloadErr)) {
-          message = ERROR_PERMISSION;
-        } else if (isNetworkError(reloadErr)) {
-          message = ERROR_NETWORK;
-        } else {
-          message = ERROR_GENERIC;
-        }
-
-        set({ error: message });
+        set({ error: classifyError(reloadErr) });
       }
     }
   },

@@ -11,13 +11,15 @@
 
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CreateFamilyTreeModal } from '@/components/family/CreateFamilyTreeModal';
 import { EmptyState } from '@/components/family/EmptyState';
 import { FamilyTreeCard } from '@/components/family/FamilyTreeCard';
+import { FeaturedTreesRow } from '@/components/family/FeaturedTreesRow';
 import { HomeHeader } from '@/components/home-header';
+import { FEATURE_DEV_SEED } from '@/constants/features';
 import { AsalUsulColors } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useFamilyTreeStore } from '@/store/useFamilyTreeStore';
@@ -43,6 +45,7 @@ export default function HomeScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const prevUserRef = useRef(user);
+  const [seeding, setSeeding] = useState(false);
 
   // ─── Load family trees on mount / uid change (Requirements: 2.4) ──────────
   useEffect(() => {
@@ -61,6 +64,19 @@ export default function HomeScreen() {
     }
     prevUserRef.current = user;
   }, [user]);
+
+  // ─── Dev-only: seed sample trees (Jokowi & Prabowo) ───────────────────────
+  const handleSeed = useCallback(async () => {
+    if (!user?.uid || seeding) return;
+    setSeeding(true);
+    try {
+      const { seedSampleData } = await import('@/services/sampleSeed');
+      await seedSampleData(user.uid);
+      await loadFamilyTrees(user.uid);
+    } finally {
+      setSeeding(false);
+    }
+  }, [user?.uid, seeding, loadFamilyTrees]);
 
   // ─── Memoized callbacks ────────────────────────────────────────────────────
 
@@ -121,14 +137,22 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── Loading indicator (Requirement 2.5) ─────────────────────────── */}
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={AsalUsulColors.primary} />
-          </View>
-        ) : (
-          /* ── Content ──────────────────────────────────────────────────── */
-          hasTree(familyTrees) ? (
+        {/* ── Dev-only seed button ────────────────────────────────────────── */}
+        {FEATURE_DEV_SEED && (
+          <Pressable onPress={handleSeed} disabled={seeding} style={styles.devSeedButton}>
+            <Text style={styles.devSeedText}>
+              {seeding ? 'Memuat contoh…' : '🌱 Muat Contoh (Jokowi & Prabowo)'}
+            </Text>
+          </Pressable>
+        )}
+
+        {/* ── Content area (fills remaining space) ────────────────────────── */}
+        <View style={styles.body}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={AsalUsulColors.primary} />
+            </View>
+          ) : hasTree(familyTrees) ? (
             // Requirement 1.2 — FlatList of FamilyTreeCard
             <FlatList
               data={familyTrees}
@@ -140,8 +164,13 @@ export default function HomeScreen() {
           ) : (
             // Requirement 1.1 — EmptyState when no trees
             <EmptyState onCreatePress={handleOpenModal} />
-          )
-        )}
+          )}
+        </View>
+
+        {/* ── "Jelajahi Contoh" dipancang di paling bawah (di atas tab bar) ── */}
+        <View style={styles.featuredPinned}>
+          <FeaturedTreesRow />
+        </View>
       </SafeAreaView>
 
       {/* Requirement 1.6 — always render modal */}
@@ -175,6 +204,14 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     gap: 12,
   },
+  body: {
+    flex: 1,
+  },
+  // Pinned showcase row at the very bottom; marginBottom clears the floating tab bar.
+  featuredPinned: {
+    paddingTop: 8,
+    marginBottom: 96,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -194,5 +231,20 @@ const styles = StyleSheet.create({
     color: '#B71C1C',
     fontSize: 14,
     lineHeight: 20,
+  },
+  devSeedButton: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: AsalUsulColors.primary,
+    backgroundColor: AsalUsulColors.backgroundCard,
+    alignItems: 'center',
+  },
+  devSeedText: {
+    color: AsalUsulColors.primary,
+    fontWeight: '600',
+    fontSize: 14,
   },
 });

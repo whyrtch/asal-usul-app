@@ -18,8 +18,12 @@ import { AsalUsulColors, Radii, Spacing } from '@/constants/theme';
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface EmptyTreeStateProps {
-  /** Called when the user taps the "Tambah Anggota Pertama" CTA. */
-  onAddFirstMember: () => void;
+  /**
+   * Called when the user taps the "Tambah Anggota Pertama" CTA.
+   * When omitted (e.g. a viewer with read-only access), the CTA is hidden and
+   * a read-only message is shown instead.
+   */
+  onAddFirstMember?: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -55,23 +59,26 @@ export function EmptyTreeState({ onAddFirstMember }: EmptyTreeStateProps) {
       {/* Explanatory copy — stagger delay 160 ms (Requirement 3.1) */}
       <Animated.View entering={FadeInDown.duration(400).delay(160)}>
         <UIText variant="p" style={styles.body}>
-          Tambahkan dirimu sebagai anggota pertama untuk memulai perjalanan
-          silsilah keluarga.
+          {onAddFirstMember
+            ? 'Tambahkan dirimu sebagai anggota pertama untuk memulai perjalanan silsilah keluarga.'
+            : 'Belum ada anggota dalam pohon keluarga ini.'}
         </UIText>
       </Animated.View>
 
-      {/* CTA button — stagger delay 240 ms (Requirements 3.2, 3.3) */}
-      <Animated.View
-        entering={FadeInDown.duration(400).delay(240)}
-        style={styles.ctaWrapper}
-      >
-        <Button
-          label="Tambah Anggota Pertama"
-          onPress={onAddFirstMember}
-          variant="default"
-          size="default"
-        />
-      </Animated.View>
+      {/* CTA button — only for users who can edit (Requirements 3.2, 3.3) */}
+      {onAddFirstMember && (
+        <Animated.View
+          entering={FadeInDown.duration(400).delay(240)}
+          style={styles.ctaWrapper}
+        >
+          <Button
+            label="Tambah Anggota Pertama"
+            onPress={onAddFirstMember}
+            variant="default"
+            size="default"
+          />
+        </Animated.View>
+      )}
     </View>
   );
 }

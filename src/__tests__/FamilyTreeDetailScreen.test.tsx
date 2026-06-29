@@ -122,6 +122,16 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
+// usePhotoUpload: stub so the form's PhotoPickerField doesn't pull in
+// firebase/storage → config → lib/firebase (AsyncStorage) during rendering.
+jest.mock('@/hooks/usePhotoUpload', () => ({
+  usePhotoUpload: () => ({
+    uploading: false,
+    error: null,
+    pickAndUpload: jest.fn().mockResolvedValue(null),
+  }),
+}));
+
 // react-native-safe-area-context: render children directly
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
@@ -135,6 +145,36 @@ jest.mock('react-native-safe-area-context', () => {
       style?: object;
     }) => React.createElement(View, { style }, children),
     useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+  };
+});
+
+// react-native-gesture-handler: minimal stub.
+// FamilyTreeCanvas (which imports RNGH) is only rendered once members exist;
+// these tests keep the store empty, so we just need the import to resolve.
+jest.mock('react-native-gesture-handler', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const chain = () => {
+    const builder: Record<string, () => unknown> = {};
+    builder.averageTouches = () => builder;
+    builder.onUpdate = () => builder;
+    builder.onEnd = () => builder;
+    return builder;
+  };
+  return {
+    GestureHandlerRootView: ({
+      children,
+      style,
+    }: {
+      children?: React.ReactNode;
+      style?: object;
+    }) => React.createElement(View, { style }, children),
+    GestureDetector: ({ children }: { children?: React.ReactNode }) => children,
+    Gesture: {
+      Pan: chain,
+      Pinch: chain,
+      Simultaneous: () => ({}),
+    },
   };
 });
 

@@ -1,31 +1,179 @@
 rules_version = '2';
 
+// AsalUsul Firestore security rules.
+//
+// Roles:
+//   - owner   : family_trees/{treeId}.ownerId == uid (implicit, full control)
+//   - editor  : access doc with role 'editor' (read + write members)
+//   - viewer  : access doc with role 'viewer' (read only)
+//
+// Sharing is rules-only (no Cloud Functions): an invitee grants themselves an
+// access doc, validated here against a matching pending invitation.
+//
+// ⚠️ Security-critical. Must pass the emulator test suite (__rules_tests__) and
+// a security audit before `FEATURE_SHARING` is enabled in the app.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // users/{uid} — owner-only read/write
-    match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // family_trees/{treeId} — owner-only access
+    // A verified email claim. Email/password sign-up allows arbitrary
+    // UNVERIFIED emails, so every email-based check MUST require verification.
+    function verifiedEmail() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string;
+    }
+
+    function verifiedEmailIs(email) {
+      return verifiedEmail() && request.auth.token.email == email;
+    }
+
+    function treeDoc(treeId) {
+      return get(/databases/$(database)/documents/family_trees/$(treeId));
+    }
+
+    function treeExists(treeId) {
+      return exists(/databases/$(database)/documents/family_trees/$(treeId));
+    }
+
+    function isOwner(treeId) {
+      return isSignedIn()
+        && treeExists(treeId)
+        && treeDoc(treeId).data.ownerId == request.auth.uid;
+    }
+
+    function hasAccess(treeId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/family_trees/$(treeId)/access/$(request.auth.uid));
+    }
+
+    function myRole(treeId) {
+      return get(/databases/$(database)/documents/family_trees/$(treeId)/access/$(request.auth.uid)).data.role;
+    }
+
+    function isEditor(treeId) {
+      return hasAccess(treeId) && myRole(treeId) == 'editor';
+    }
+
+    function canReadTree(treeId) {
+      return isOwner(treeId) || hasAccess(treeId);
+    }
+
+    function canEditMembers(treeId) {
+      return isOwner(treeId) || isEditor(treeId);
+    }
+
+    function isCollaboratorRole(role) {
+      return role == 'editor' || role == 'viewer';
+    }
+
+    function invitationData(inviteId) {
+      return get(/databases/$(database)/documents/invitations/$(inviteId)).data;
+    }
+
+    // Validates the incoming access doc against the referenced invitation.
+    // `inv` is the invitation document data (fetched once by the caller).
+    function checkInvite(treeId, role, invitedBy, inv) {
+      return inv.treeId == treeId
+        && inv.status == 'pending'
+        && inv.role == role
+        && inv.inviterUid == invitedBy
+        && inv.expiresAt > request.time
+        && verifiedEmailIs(inv.inviteeEmail);
+    }
+
+    // Full validation of an invitee self-grant write (field integrity + invite).
+    function validSelfGrant(treeId, accessUid) {
+      return request.auth.uid == accessUid
+        && request.resource.data.uid == accessUid
+        && request.resource.data.treeId == treeId
+        && request.resource.data.createdAt == request.time
+        && isCollaboratorRole(request.resource.data.role)
+        && exists(/databases/$(database)/documents/invitations/$(request.resource.data.invitedVia))
+        && checkInvite(
+            treeId,
+            request.resource.data.role,
+            request.resource.data.invitedBy,
+            invitationData(request.resource.data.invitedVia)
+          );
+    }
+
+    // ── users/{uid} — owner-only ───────────────────────────────────────────
+    match /users/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ── family_trees/{treeId} ──────────────────────────────────────────────
     match /family_trees/{treeId} {
-      // Read and mutate existing documents only when the authenticated user is the owner
-      allow read, update, delete: if request.auth != null
-        && request.auth.uid == resource.data.ownerId;
+      allow read: if canReadTree(treeId);
+      allow create: if isSignedIn()
+        && request.resource.data.ownerId == request.auth.uid;
+      // ownerId is immutable; only the owner may update/delete.
+      allow update: if isOwner(treeId)
+        && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isOwner(treeId);
 
-      // Create only when the authenticated user sets themselves as owner
-      allow create: if request.auth != null
-        && request.auth.uid == request.resource.data.ownerId;
-
-      // family_trees/{treeId}/members/{memberId} — owner of parent tree only
+      // members/{memberId}
       match /members/{memberId} {
-        allow read, create, update, delete: if request.auth != null
-          && get(/databases/$(database)/documents/family_trees/$(treeId)).data.ownerId == request.auth.uid;
+        allow read: if canReadTree(treeId);
+        allow create, update, delete: if canEditMembers(treeId);
+      }
+
+      // access/{accessUid} — collaborator role docs
+      match /access/{accessUid} {
+        allow get: if isOwner(treeId) || request.auth.uid == accessUid;
+        allow list: if isOwner(treeId);
+        // Owner grants/edits, OR invitee self-grants via a valid invitation.
+        allow create: if (isOwner(treeId) && isCollaboratorRole(request.resource.data.role))
+          || validSelfGrant(treeId, accessUid);
+        allow update: if isOwner(treeId) && isCollaboratorRole(request.resource.data.role);
+        allow delete: if isOwner(treeId);
       }
     }
 
-    // Deny all other paths (default deny)
+    // Shared-with-me: a user may read their own access docs anywhere.
+    // Enables collectionGroup('access') WHERE uid == request.auth.uid.
+    match /{path=**}/access/{accessUid} {
+      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // ── invitations/{inviteId} ─────────────────────────────────────────────
+    match /invitations/{inviteId} {
+      // Owner of the tree, or the verified invitee, may read.
+      allow get, list: if isOwner(resource.data.treeId)
+        || verifiedEmailIs(resource.data.inviteeEmail);
+
+      // Only the tree owner may create a pending invitation for their tree.
+      // inviteeEmail must be a non-empty, normalized (trimmed + lowercased) string.
+      allow create: if isSignedIn()
+        && request.resource.data.inviterUid == request.auth.uid
+        && isOwner(request.resource.data.treeId)
+        && isCollaboratorRole(request.resource.data.role)
+        && request.resource.data.status == 'pending'
+        && request.resource.data.inviteeEmail is string
+        && request.resource.data.inviteeEmail.size() > 0
+        && request.resource.data.inviteeEmail == request.resource.data.inviteeEmail.lower()
+        && request.resource.data.inviteeEmail == request.resource.data.inviteeEmail.trim();
+
+      // Owner may change status freely (e.g. revoke). The invitee may ONLY move
+      // a PENDING invite to a terminal state — never back to pending (which
+      // would let a revoked user re-grant themselves access).
+      allow update: if isOwner(resource.data.treeId)
+        || (
+          verifiedEmailIs(resource.data.inviteeEmail)
+          && resource.data.status == 'pending'
+          && request.resource.data.status in ['accepted', 'declined', 'expired']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        );
+
+      allow delete: if isOwner(resource.data.treeId);
+    }
+
+    // ── Default deny ───────────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }

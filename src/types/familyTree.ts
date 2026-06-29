@@ -6,6 +6,8 @@
  *   Member     → Firestore: users/{uid}/familyTrees/{familyTreeId}/members/{id}
  */
 
+import type { Role } from './sharing';
+
 // ---------------------------------------------------------------------------
 // FamilyTree
 // ---------------------------------------------------------------------------
@@ -30,8 +32,17 @@ export interface FamilyTree {
   /**
    * Array of Firebase Auth UIDs that the owner has shared this tree with.
    * Empty array by default. Used for future read-only sharing/collaboration.
+   *
+   * @deprecated Replaced by the `family_trees/{treeId}/access/{uid}` subcollection
+   * in Phase 2 sharing. Kept for backward-compatible reads only.
    */
   shareWith: string[];
+  /**
+   * The current user's effective role for this tree, derived at load time.
+   * Not persisted. `'owner'` for owned trees; `'editor' | 'viewer'` for shared
+   * trees; `undefined`/omitted when role is not relevant.
+   */
+  role?: Role;
 }
 
 // ---------------------------------------------------------------------------
@@ -51,6 +62,10 @@ export interface Member {
   role: string;
   /** Date of birth in "YYYY-MM-DD" format, or null if unknown */
   birthDate: string | null;
+  /** Living/deceased status of the member. Defaults to 'living'. */
+  status: 'living' | 'deceased';
+  /** Date of death in "YYYY-MM-DD" format, or null if living/unknown */
+  deathDate: string | null;
   /** Optional photo URL; null if not provided */
   photoUrl: string | null;
   /** Optional biography text; null if not provided */
@@ -118,6 +133,10 @@ export interface EditMemberFormValues {
   role: string;
   /** Optional; "YYYY-MM-DD" format or empty string */
   birthDate: string;
+  /** Living/deceased status */
+  status: 'living' | 'deceased';
+  /** Optional; "YYYY-MM-DD" format or empty string. Only relevant when status is 'deceased' */
+  deathDate: string;
   /** Optional biography text */
   bio: string;
 }
@@ -127,4 +146,5 @@ export interface EditMemberFormErrors {
   gender?: string;
   role?: string;
   birthDate?: string;
+  deathDate?: string;
 }

@@ -27,6 +27,8 @@ const memberArbitrary: fc.Arbitrary<Member> = fc.record<Member>({
   gender: fc.oneof(fc.constant('male' as const), fc.constant('female' as const)),
   role: fc.string({ minLength: 1 }),
   birthDate: fc.oneof(fc.constant(null), fc.string({ minLength: 10, maxLength: 10 })),
+  status: fc.oneof(fc.constant('living' as const), fc.constant('deceased' as const)),
+  deathDate: fc.oneof(fc.constant(null), fc.string({ minLength: 10, maxLength: 10 })),
   photoUrl: fc.constant(null),
   bio: fc.oneof(fc.constant(null), fc.string()),
   fatherId: fc.constant(null),

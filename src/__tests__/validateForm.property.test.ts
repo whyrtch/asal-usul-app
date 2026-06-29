@@ -151,6 +151,8 @@ const validFormValuesArbitrary: fc.Arbitrary<FormValues> = fc.record<FormValues>
   gender: validGenderArbitrary,
   role: validRoleArbitrary,
   birthDate: optionalBirthDateArbitrary,
+  status: fc.constant('living' as const),
+  deathDate: fc.constant(''),
   bio: fc.string(),
 });
 
@@ -164,6 +166,8 @@ const anyFormValuesArbitrary: fc.Arbitrary<FormValues> = fc.record<FormValues>({
   ),
   role: fc.string(),
   birthDate: fc.string(),
+  status: fc.oneof(fc.constant('living' as const), fc.constant('deceased' as const)),
+  deathDate: fc.string(),
   bio: fc.string(),
 });
 
@@ -250,6 +254,8 @@ describe('whitespace-only fullName produces fullName error', () => {
             gender,
             role,
             birthDate: '',
+            status: 'living',
+            deathDate: '',
             bio: '',
           };
           const errors = validateForm(values);
@@ -281,7 +287,7 @@ describe('valid birthDate format YYYY-MM-DD does not produce birthDate error', (
         validRoleArbitrary,
         validBirthDateArbitrary,
         (fullName, gender, role, birthDate) => {
-          const values: FormValues = { fullName, gender, role, birthDate, bio: '' };
+          const values: FormValues = { fullName, gender, role, birthDate, status: 'living', deathDate: '', bio: '' };
           const errors = validateForm(values);
           expect(errors.birthDate).toBeUndefined();
         },
@@ -297,7 +303,7 @@ describe('valid birthDate format YYYY-MM-DD does not produce birthDate error', (
         validGenderArbitrary,
         validRoleArbitrary,
         (fullName, gender, role) => {
-          const values: FormValues = { fullName, gender, role, birthDate: '', bio: '' };
+          const values: FormValues = { fullName, gender, role, birthDate: '', status: 'living', deathDate: '', bio: '' };
           const errors = validateForm(values);
           expect(errors.birthDate).toBeUndefined();
         },
@@ -326,7 +332,7 @@ describe('invalid birthDate format produces birthDate error', () => {
         validRoleArbitrary,
         invalidBirthDateArbitrary,
         (fullName, gender, role, birthDate) => {
-          const values: FormValues = { fullName, gender, role, birthDate, bio: '' };
+          const values: FormValues = { fullName, gender, role, birthDate, status: 'living', deathDate: '', bio: '' };
           const errors = validateForm(values);
           expect(errors.birthDate).toBeDefined();
           expect(errors.birthDate).toBe('Format tanggal: YYYY-MM-DD');
