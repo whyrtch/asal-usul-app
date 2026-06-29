@@ -32,6 +32,11 @@ jest.mock('expo-image', () => {
   };
 });
 
+// expo-router: mock useRouter for soft auth gate (router.back() after sign-in)
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }),
+}));
+
 // expo-web-browser: mock openBrowserAsync so footer link taps don't fail
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(() => Promise.resolve({ type: 'cancel' })),

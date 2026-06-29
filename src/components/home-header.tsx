@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
+import { IconButton } from '@/components/ui/icon-button';
+import { UIText } from '@/components/ui/text';
 import { AsalUsulColors } from '@/constants/theme';
 
 export interface HomeHeaderProps {
@@ -12,17 +13,17 @@ export interface HomeHeaderProps {
 export function HomeHeader({ actionIcon, onActionPress }: HomeHeaderProps) {
   return (
     <View style={styles.container}>
-      <ThemedText type="subtitle" style={styles.title}>
+      <UIText variant="h3" style={styles.title}>
         AsalUsul
-      </ThemedText>
-      {actionIcon !== undefined && (
-        <Pressable
+      </UIText>
+      {actionIcon !== undefined && onActionPress !== undefined && (
+        <IconButton
+          icon={actionIcon}
           onPress={onActionPress}
-          accessibilityRole="button"
-          style={styles.iconButton}
-        >
-          <Ionicons name={actionIcon} size={24} color={AsalUsulColors.primary} />
-        </Pressable>
+          accessibilityLabel={actionIcon === 'add' ? 'Tambah pohon keluarga' : 'Notifikasi'}
+          variant="default"
+          size={24}
+        />
       )}
     </View>
   );
@@ -38,8 +39,5 @@ const styles = StyleSheet.create({
   },
   title: {
     color: AsalUsulColors.primary,
-  },
-  iconButton: {
-    padding: 8,
   },
 });

@@ -51,54 +51,23 @@ jest.mock('react-native-reanimated', () => {
       out: (_fn: unknown) => (_t: number) => 0,
       cubic: (_t: number) => 0,
     },
+    SlideInDown: {
+      duration: () => ({ springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }) }),
+      springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }),
+    },
+    SlideOutDown: {
+      duration: () => ({}),
+    },
   };
 });
 
-// @/components/primary-button: render a Pressable that exposes `disabled` via
-// accessibilityState so tests can inspect it, and only fires onPress when not
-// disabled (matching the real component's behaviour).
-jest.mock('@/components/primary-button', () => {
-  const React = require('react');
-  const { Pressable, Text } = require('react-native');
-
-  return {
-    PrimaryButton: ({
-      label,
-      onPress,
-      disabled = false,
-      variant,
-    }: {
-      label: string;
-      onPress: () => void;
-      disabled?: boolean;
-      variant?: string;
-    }) =>
-      React.createElement(
-        Pressable,
-        {
-          testID: `primary-button-${label}`,
-          onPress: disabled ? undefined : onPress,
-          accessibilityRole: 'button',
-          accessibilityState: { disabled },
-          accessibilityHint: variant,
-        },
-        React.createElement(Text, null, label),
-      ),
-  };
-});
-
-// @/components/themed-text: render plain Text
-jest.mock('@/components/themed-text', () => {
+// @expo/vector-icons: mock Ionicons so Button component renders without native modules
+jest.mock('@expo/vector-icons', () => {
   const React = require('react');
   const { Text } = require('react-native');
   return {
-    ThemedText: ({
-      children,
-      style,
-    }: {
-      children?: React.ReactNode;
-      style?: object;
-    }) => React.createElement(Text, { style }, children),
+    Ionicons: ({ name }: { name: string }) =>
+      React.createElement(Text, { testID: `icon-${name}` }, name),
   };
 });
 
@@ -156,7 +125,7 @@ describe('Property 3: Modal blocks submission for whitespace-only input', () => 
           const onSubmit = jest.fn();
           const onClose = jest.fn();
 
-          const { getByLabelText, getByTestId, unmount } = render(
+          const { getByLabelText, unmount } = render(
             <CreateFamilyTreeModal
               visible={true}
               onClose={onClose}
@@ -171,7 +140,7 @@ describe('Property 3: Modal blocks submission for whitespace-only input', () => 
           );
 
           // Requirement 2.5: submit button must be disabled
-          const submitButton = getByTestId('primary-button-Buat');
+          const submitButton = getByLabelText('Buat');
           expect(submitButton.props.accessibilityState?.disabled).toBe(true);
 
           unmount();
@@ -195,7 +164,7 @@ describe('Property 3: Modal blocks submission for whitespace-only input', () => 
           const onSubmit = jest.fn();
           const onClose = jest.fn();
 
-          const { getByLabelText, getByTestId, unmount } = render(
+          const { getByLabelText, unmount } = render(
             <CreateFamilyTreeModal
               visible={true}
               onClose={onClose}
@@ -210,7 +179,7 @@ describe('Property 3: Modal blocks submission for whitespace-only input', () => 
           );
 
           // Attempt to press the submit button
-          fireEvent.press(getByTestId('primary-button-Buat'));
+          fireEvent.press(getByLabelText('Buat'));
 
           // Requirement 2.6: onSubmit must NOT have been called
           expect(onSubmit).not.toHaveBeenCalled();
@@ -238,7 +207,7 @@ describe('Property 2: Modal submit calls onSubmit with trimmed name', () => {
           const onSubmit = jest.fn();
           const onClose = jest.fn();
 
-          const { getByLabelText, getByTestId, unmount } = render(
+          const { getByLabelText, unmount } = render(
             <CreateFamilyTreeModal
               visible={true}
               onClose={onClose}
@@ -252,7 +221,7 @@ describe('Property 2: Modal submit calls onSubmit with trimmed name', () => {
           );
 
           // Submit button must be enabled
-          const submitButton = getByTestId('primary-button-Buat');
+          const submitButton = getByLabelText('Buat');
           expect(submitButton.props.accessibilityState?.disabled).toBe(false);
 
           unmount();
@@ -276,7 +245,7 @@ describe('Property 2: Modal submit calls onSubmit with trimmed name', () => {
           const onSubmit = jest.fn();
           const onClose = jest.fn();
 
-          const { getByLabelText, getByTestId, unmount } = render(
+          const { getByLabelText, unmount } = render(
             <CreateFamilyTreeModal
               visible={true}
               onClose={onClose}
@@ -289,7 +258,7 @@ describe('Property 2: Modal submit calls onSubmit with trimmed name', () => {
             validName,
           );
 
-          fireEvent.press(getByTestId('primary-button-Buat'));
+          fireEvent.press(getByLabelText('Buat'));
 
           // Requirement 2.4: onSubmit called with trimmed name
           expect(onSubmit).toHaveBeenCalledTimes(1);

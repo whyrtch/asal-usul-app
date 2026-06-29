@@ -105,8 +105,8 @@ jest.mock('react-native-reanimated', () => {
       duration: () => ({ delay: () => ({}) }),
     },
     SlideInDown: {
-      duration: () => ({ springify: () => ({}) }),
-      springify: () => ({}),
+      duration: () => ({ springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }) }),
+      springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }),
     },
     SlideOutDown: {
       duration: () => ({}),

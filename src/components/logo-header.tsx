@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
+import { UIText } from '@/components/ui/text';
 import { AsalUsulColors } from '@/constants/theme';
 
 export interface LogoHeaderProps {
@@ -18,13 +18,13 @@ export function LogoHeader({ showTagline = false, logoSize = 96, style }: LogoHe
         contentFit="contain"
         style={{ width: logoSize, height: logoSize }}
       />
-      <ThemedText type="title" style={styles.appName}>
+      <UIText variant="h2" style={styles.appName}>
         AsalUsul
-      </ThemedText>
+      </UIText>
       {showTagline === true && (
-        <ThemedText type="small" style={styles.tagline}>
+        <UIText variant="muted" style={styles.tagline}>
           Jejak Keluarga dalam Satu Pohon
-        </ThemedText>
+        </UIText>
       )}
     </View>
   );

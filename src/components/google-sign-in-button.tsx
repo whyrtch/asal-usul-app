@@ -5,8 +5,8 @@ import {
     StyleSheet,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { AsalUsulColors, Radii, Shadows } from '@/constants/theme';
+import { UIText } from '@/components/ui/text';
+import { AsalUsulColors, ButtonHeight, Radii, Shadows } from '@/constants/theme';
 
 export interface GoogleSignInButtonProps {
   onPress: () => void;
@@ -55,10 +55,10 @@ export function GoogleSignInButton({
         />
       ) : (
         <>
-          <AntDesign name="google" size={20} color="white" style={styles.icon} />
-          <ThemedText type="smallBold" style={styles.label}>
+          <AntDesign name="google" size={20} color={AsalUsulColors.textOnPrimary} style={styles.icon} />
+          <UIText variant="smallBold" style={styles.label}>
             {resolvedLabel}
-          </ThemedText>
+          </UIText>
         </>
       )}
     </Pressable>
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     backgroundColor: AsalUsulColors.primary,
     borderRadius: Radii.pill,
     paddingVertical: 16,
-    minHeight: 52,
+    minHeight: ButtonHeight.default,
     ...Shadows.button,
   },
   pressed: {

@@ -10,6 +10,10 @@ export interface HeroIllustrationProps {
 
 const DEFAULT_SIZE = 240;
 
+/**
+ * HeroIllustration — decorative card with a tree/git-network icon.
+ * Composes cleanly with Card-like styling from theme tokens.
+ */
 export function HeroIllustration({ size = DEFAULT_SIZE, style }: HeroIllustrationProps) {
   const width = size;
   const height = (3 / 4) * width;

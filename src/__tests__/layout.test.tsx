@@ -3,8 +3,8 @@
  * Requirements: 1.2, 1.3, 3.2, 3.3
  *
  * Tests:
- * - Stack.Protected dengan guard={false} tidak merender screen yang dilindungi
- * - Stack.Protected dengan guard={true} merender screen yang dilindungi
+ * - Soft auth gate: login screen is always in the Stack (modal route)
+ * - Soft auth gate: (tabs) screen is always rendered (no guard)
  * - SplashScreen.hideAsync dipanggil saat loading === false
  * - SplashScreen.hideAsync dipanggil dalam finally block (dipanggil meski ada error)
  */
@@ -17,18 +17,9 @@ import React from 'react';
 // expo-splash-screen: uses the manual mock at __mocks__/expo-splash-screen.ts
 jest.mock('expo-splash-screen');
 
-// expo-router: mock Stack and its sub-components
+// expo-router: mock Stack and its sub-components (no more Stack.Protected)
 jest.mock('expo-router', () => {
   const React = require('react');
-
-  // Stack.Protected renders children only when guard === true
-  const Protected = ({
-    guard,
-    children,
-  }: {
-    guard: boolean;
-    children: React.ReactNode;
-  }) => (guard ? <>{children}</> : null);
 
   // Stack.Screen renders a placeholder with its name as testID
   const Screen = ({ name }: { name: string }) => {
@@ -38,11 +29,11 @@ jest.mock('expo-router', () => {
 
   // Stack renders children directly
   const Stack = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-  Stack.Protected = Protected;
   Stack.Screen = Screen;
 
   return {
     Stack,
+    useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }),
     DarkTheme: {},
     DefaultTheme: {},
     ThemeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -129,22 +120,40 @@ function renderLayout() {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe('RootLayoutNav — Stack.Protected routing (Requirements: 3.2, 3.3)', () => {
+describe('RootLayoutNav — Soft auth gate (Requirements: 3.2, 3.3)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('does NOT render the login screen when guard={false} (user is logged in)', () => {
-    // guard for login = !isLoggedIn = false when user is present
+  it('renders the (tabs) screen regardless of auth state (user is logged in)', () => {
     mockUseAuth.mockReturnValue({ user: { uid: 'u1' }, loading: false });
 
-    const { queryByTestId } = renderLayout();
+    const { getByTestId } = renderLayout();
 
-    expect(queryByTestId('screen-login')).toBeNull();
+    // Tabs are always rendered — no guard
+    expect(getByTestId('screen-(tabs)')).toBeTruthy();
   });
 
-  it('renders the login screen when guard={true} (user is NOT logged in)', () => {
-    // guard for login = !isLoggedIn = true when user is null
+  it('renders the (tabs) screen regardless of auth state (user is NOT logged in)', () => {
+    mockUseAuth.mockReturnValue({ user: null, loading: false });
+
+    const { getByTestId } = renderLayout();
+
+    // Tabs are always rendered — no guard
+    expect(getByTestId('screen-(tabs)')).toBeTruthy();
+  });
+
+  it('renders the login screen as a Stack route (user is logged in)', () => {
+    // Login is always in the Stack as a modal route — navigated to via push
+    mockUseAuth.mockReturnValue({ user: { uid: 'u1' }, loading: false });
+
+    const { getByTestId } = renderLayout();
+
+    expect(getByTestId('screen-login')).toBeTruthy();
+  });
+
+  it('renders the login screen as a Stack route (user is NOT logged in)', () => {
+    // Login is always in the Stack as a modal route — navigated to via push
     mockUseAuth.mockReturnValue({ user: null, loading: false });
 
     const { getByTestId } = renderLayout();
@@ -152,22 +161,16 @@ describe('RootLayoutNav — Stack.Protected routing (Requirements: 3.2, 3.3)', (
     expect(getByTestId('screen-login')).toBeTruthy();
   });
 
-  it('does NOT render the (tabs) screen when guard={false} (user is NOT logged in)', () => {
-    // guard for tabs = isLoggedIn = false when user is null
+  it('exactly two Stack.Screen routes are rendered ((tabs) + login)', () => {
     mockUseAuth.mockReturnValue({ user: null, loading: false });
 
     const { queryByTestId } = renderLayout();
 
-    expect(queryByTestId('screen-(tabs)')).toBeNull();
-  });
-
-  it('renders the (tabs) screen when guard={true} (user is logged in)', () => {
-    // guard for tabs = isLoggedIn = true when user is present
-    mockUseAuth.mockReturnValue({ user: { uid: 'u1' }, loading: false });
-
-    const { getByTestId } = renderLayout();
-
-    expect(getByTestId('screen-(tabs)')).toBeTruthy();
+    expect(queryByTestId('screen-(tabs)')).toBeTruthy();
+    expect(queryByTestId('screen-login')).toBeTruthy();
+    // There are only 2 screens in the layout
+    expect(queryByTestId('screen-family')).toBeNull();
+    expect(queryByTestId('screen-member')).toBeNull();
   });
 });
 

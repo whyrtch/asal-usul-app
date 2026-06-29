@@ -7,7 +7,7 @@ import Animated, {
     FadeOut,
 } from 'react-native-reanimated';
 
-import { ThemedText } from '@/components/themed-text';
+import { UIText } from '@/components/ui/text';
 import { AsalUsulColors } from '@/constants/theme';
 
 export interface SplashScreenProps {
@@ -46,21 +46,21 @@ export function SplashScreen({ isReady, onAnimationComplete }: SplashScreenProps
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(600).delay(300)}>
-          <ThemedText type="title" style={styles.appName}>
+          <UIText variant="h2" style={styles.appName}>
             AsalUsul
-          </ThemedText>
+          </UIText>
         </Animated.View>
 
         <Animated.View entering={FadeIn.duration(500).delay(450)}>
-          <ThemedText type="small" style={styles.tagline}>
+          <UIText variant="muted" style={styles.tagline}>
             Jejak Keluarga dalam Satu Pohon
-          </ThemedText>
+          </UIText>
         </Animated.View>
 
         <Animated.View entering={FadeIn.duration(400).delay(600)} style={styles.loadingContainer}>
-          <ThemedText type="small" style={styles.loadingText}>
+          <UIText variant="muted" style={styles.loadingText}>
             Memuat...
-          </ThemedText>
+          </UIText>
         </Animated.View>
       </View>
     );

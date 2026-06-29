@@ -12,7 +12,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { HeroIllustration } from '@/components/hero-illustration';
 import { PrimaryButton } from '@/components/primary-button';
-import { ThemedText } from '@/components/themed-text';
+import { UIText } from '@/components/ui/text';
 import { AsalUsulColors } from '@/constants/theme';
 
 export interface EmptyStateProps {
@@ -36,16 +36,16 @@ export function EmptyState({ onCreatePress }: EmptyStateProps) {
 
       {/* Heading — Requirement 7.2 */}
       <Animated.View entering={FadeInDown.duration(400).delay(80)}>
-        <ThemedText type="subtitle" style={styles.heading}>
+        <UIText variant="h3" style={styles.heading}>
           Belum ada pohon keluarga
-        </ThemedText>
+        </UIText>
       </Animated.View>
 
       {/* Description — Requirement 7.3 */}
       <Animated.View entering={FadeInDown.duration(400).delay(160)}>
-        <ThemedText type="default" style={styles.description}>
+        <UIText variant="p" style={styles.description}>
           Mulai buat pohon keluarga Anda dan hubungkan dengan anggota keluarga lainnya
-        </ThemedText>
+        </UIText>
       </Animated.View>
 
       {/* CTA button — Requirement 7.4, 7.5 */}

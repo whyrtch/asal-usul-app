@@ -1,20 +1,3 @@
-// Feature: expo-firebase-boilerplate, Property 2: Auth-based routing
-
-/**
- * Property 2: Auth-based routing
- * Validates: Requirements 3.2, 3.3
- *
- * For any auth state (user is null or a valid user object), the router should
- * always direct the user to the correct screen — unauthenticated users
- * attempting to access HomeScreen or SettingScreen are redirected to
- * AuthScreen, and authenticated users attempting to access AuthScreen are
- * redirected to HomeScreen.
- *
- * Concretely: RootLayoutNav renders two Stack.Protected blocks:
- *   - guard={!isLoggedIn}  → login screen  (true when user=null)
- *   - guard={isLoggedIn}   → (tabs) screen (true when user!=null)
- */
-
 import { render } from '@testing-library/react-native';
 import * as fc from 'fast-check';
 import React from 'react';
@@ -44,32 +27,27 @@ jest.mock('@/context/auth-context', () => ({
   useAuth: jest.fn(),
 }));
 
-// Capture guard values passed to Stack.Protected
-const capturedGuards: boolean[] = [];
+// Capture screen names passed to Stack.Screen
+const capturedScreens: string[] = [];
 
-// Mock expo-router: Stack renders children, Stack.Protected captures guard prop
+// Mock expo-router: Stack renders children, Stack.Screen captures name prop
+// No Stack.Protected — soft auth gate uses plain Stack.Screen routes instead.
 jest.mock('expo-router', () => {
   const React = require('react');
+  const { View } = require('react-native');
 
-  const StackProtected = ({
-    guard,
-    children,
-  }: {
-    guard: boolean;
-    children: React.ReactNode;
-  }) => {
-    capturedGuards.push(guard);
-    return <>{children}</>;
+  const StackScreen = (props: { name: string }) => {
+    capturedScreens.push(props.name);
+    // Ensure at least one element is rendered so the test can verify
+    return React.createElement(View, { testID: `screen-${props.name}` });
   };
 
-  const StackScreen = (_props: { name: string }) => null;
-
   const Stack = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-  Stack.Protected = StackProtected;
   Stack.Screen = StackScreen;
 
   return {
     Stack,
+    useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }),
     DarkTheme: {},
     DefaultTheme: {},
     ThemeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -83,9 +61,9 @@ import RootLayout from '../app/_layout';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Clears the captured guards array before each render. */
-function resetCapturedGuards() {
-  capturedGuards.length = 0;
+/** Clears the captured screens array before each render. */
+function resetCapturedScreens() {
+  capturedScreens.length = 0;
 }
 
 // ── Arbitraries ───────────────────────────────────────────────────────────────
@@ -101,15 +79,21 @@ const validUserArb = fc.record({
 /** Generates either null (signed-out) or a valid user object (signed-in). */
 const userArb = fc.oneof(fc.constant(null), validUserArb);
 
-/** Route names that the app navigates between. */
-const routeNameArb = fc.constantFrom('login', 'index', 'setting');
+// ── Property Tests — Soft Auth Gate ───────────────────────────────────────────
 
-// ── Property Tests ────────────────────────────────────────────────────────────
-
-describe('Property 2: Auth-based routing', () => {
+/**
+ * Property: Soft Auth Gate
+ * Validates: Requirements 3.2, 3.3
+ *
+ * For any auth state (user is null or a valid user), the layout always renders
+ * exactly the same Stack.Screen routes: (tabs) and login are always present.
+ * No Stack.Protected guards exist — tabs are always accessible, and login is
+ * a modal route pushed on demand. This is a simplified property because the
+ * layout is now declarative (no conditional rendering based on auth).
+ */
+describe('Property: Soft Auth Gate', () => {
   beforeEach(() => {
-    resetCapturedGuards();
-    // Default: loading=false so RootLayoutNav renders the Stack
+    resetCapturedScreens();
     (useAuth as jest.Mock).mockReturnValue({
       user: null,
       loading: false,
@@ -122,125 +106,51 @@ describe('Property 2: Auth-based routing', () => {
     jest.clearAllMocks();
   });
 
-  it(
-    'user=null → login guard is true, tabs guard is false (for any route name)',
-    () => {
-      // Feature: expo-firebase-boilerplate, Property 2: Auth-based routing
-      fc.assert(
-        fc.property(routeNameArb, (_routeName) => {
-          resetCapturedGuards();
+  it('no Stack.Protected guards exist for any auth state', () => {
+    fc.assert(
+      fc.property(userArb, (user) => {
+        resetCapturedScreens();
 
-          // Arrange: unauthenticated state
-          (useAuth as jest.Mock).mockReturnValue({
-            user: null,
-            loading: false,
-            signInWithGoogle: jest.fn(),
-            signOut: jest.fn(),
-          });
+        (useAuth as jest.Mock).mockReturnValue({
+          user,
+          loading: false,
+          signInWithGoogle: jest.fn(),
+          signOut: jest.fn(),
+        });
 
-          render(<RootLayout />);
+        render(<RootLayout />);
 
-          // RootLayoutNav renders two Stack.Protected blocks in order:
-          //   [0] guard={!isLoggedIn}  → login screen
-          //   [1] guard={isLoggedIn}   → (tabs) screen
-          expect(capturedGuards).toHaveLength(2);
+        // The layout renders Stack.Screen children directly inside the Stack.
+        // There are no Stack.Protected guards in the new soft-auth layout.
+        // Verify this by checking screens are captured (not guards).
+        expect(capturedScreens.length).toBeGreaterThanOrEqual(2);
+      }),
+      { numRuns: 100 }
+    );
+  });
 
-          const [loginGuard, tabsGuard] = capturedGuards;
+  it('(tabs) and login Stack.Screen routes are always rendered for any auth state', () => {
+    fc.assert(
+      fc.property(userArb, (user) => {
+        resetCapturedScreens();
 
-          // Core property: when user=null, login is accessible, tabs are not
-          expect(loginGuard).toBe(true);
-          expect(tabsGuard).toBe(false);
-        }),
-        { numRuns: 100 }
-      );
-    }
-  );
+        (useAuth as jest.Mock).mockReturnValue({
+          user,
+          loading: false,
+          signInWithGoogle: jest.fn(),
+          signOut: jest.fn(),
+        });
 
-  it(
-    'user!=null → login guard is false, tabs guard is true (for any valid user and route name)',
-    () => {
-      // Feature: expo-firebase-boilerplate, Property 2: Auth-based routing
-      fc.assert(
-        fc.property(validUserArb, routeNameArb, (user, _routeName) => {
-          resetCapturedGuards();
+        const { queryByTestId } = render(<RootLayout />);
 
-          // Arrange: authenticated state
-          (useAuth as jest.Mock).mockReturnValue({
-            user,
-            loading: false,
-            signInWithGoogle: jest.fn(),
-            signOut: jest.fn(),
-          });
-
-          render(<RootLayout />);
-
-          expect(capturedGuards).toHaveLength(2);
-
-          const [loginGuard, tabsGuard] = capturedGuards;
-
-          // Core property: when user!=null, tabs are accessible, login is not
-          expect(loginGuard).toBe(false);
-          expect(tabsGuard).toBe(true);
-        }),
-        { numRuns: 100 }
-      );
-    }
-  );
-
-  it(
-    'guard values are always complementary (loginGuard === !tabsGuard) for any user state',
-    () => {
-      // Feature: expo-firebase-boilerplate, Property 2: Auth-based routing
-      fc.assert(
-        fc.property(userArb, routeNameArb, (user, _routeName) => {
-          resetCapturedGuards();
-
-          (useAuth as jest.Mock).mockReturnValue({
-            user,
-            loading: false,
-            signInWithGoogle: jest.fn(),
-            signOut: jest.fn(),
-          });
-
-          render(<RootLayout />);
-
-          expect(capturedGuards).toHaveLength(2);
-
-          const [loginGuard, tabsGuard] = capturedGuards;
-
-          // Core property: the two guards are always logical complements
-          expect(loginGuard).toBe(!tabsGuard);
-          expect(tabsGuard).toBe(!loginGuard);
-        }),
-        { numRuns: 100 }
-      );
-    }
-  );
-
-  it(
-    'exactly two Stack.Protected blocks are rendered for any auth state',
-    () => {
-      // Feature: expo-firebase-boilerplate, Property 2: Auth-based routing
-      fc.assert(
-        fc.property(userArb, (user) => {
-          resetCapturedGuards();
-
-          (useAuth as jest.Mock).mockReturnValue({
-            user,
-            loading: false,
-            signInWithGoogle: jest.fn(),
-            signOut: jest.fn(),
-          });
-
-          render(<RootLayout />);
-
-          // There must always be exactly 2 protected blocks (login + tabs)
-          expect(capturedGuards).toHaveLength(2);
-        }),
-        { numRuns: 100 }
-      );
-    }
-  );
+        // Tabs are always rendered regardless of auth state
+        expect(queryByTestId('screen-(tabs)')).toBeTruthy();
+        // Login is always a Stack route (modal) regardless of auth state
+        expect(queryByTestId('screen-login')).toBeTruthy();
+      }),
+      { numRuns: 100 }
+    );
+  });
 });
 
 // Feature: expo-firebase-boilerplate, Property 7: Splash screen hides when loading completes

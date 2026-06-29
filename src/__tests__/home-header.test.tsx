@@ -24,6 +24,32 @@ jest.mock('@expo/vector-icons', () => {
   };
 });
 
+// react-native-reanimated: stub all animation primitives for synchronous rendering
+// (icon-button.tsx imports useSharedValue, useAnimatedStyle, withSpring)
+jest.mock('react-native-reanimated', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: {
+      View: (props: object) => React.createElement(View, props),
+    },
+    useSharedValue: (initial: number) => ({ value: initial }),
+    useAnimatedStyle: (fn: () => object) => fn(),
+    withSpring: (toValue: number) => toValue,
+    withTiming: (toValue: number) => toValue,
+    SlideInDown: {
+      duration: () => ({ springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }) }),
+      springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }),
+    },
+    SlideOutDown: {
+      duration: () => ({}),
+    },
+    runOnJS: (fn: (...args: unknown[]) => void) => fn,
+    Easing: { out: () => () => 0, cubic: () => 0 },
+  };
+});
+
 // ── Import component under test ───────────────────────────────────────────────
 
 import { HomeHeader } from '../components/home-header';

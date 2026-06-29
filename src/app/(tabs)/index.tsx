@@ -2,11 +2,15 @@
  * HomeScreen — Conditionally renders EmptyState or a FlatList of FamilyTreeCard
  * components based on the FamilyTreeStore state.
  *
+ * Soft auth gate: unauthenticated users see the home screen but are redirected
+ * to login when they tap "Buat Sekarang". After successful sign-in, the create
+ * modal opens automatically (post-login redirect).
+ *
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 2.4, 2.5, 2.6, 2.7
  */
 
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,6 +22,13 @@ import { AsalUsulColors } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useFamilyTreeStore } from '@/store/useFamilyTreeStore';
 import type { FamilyTree } from '@/types/familyTree';
+
+/**
+ * Module-level flag: set to true when the user taps "Buat Sekarang" but isn't
+ * logged in. After returning from the login flow, the home screen checks this
+ * flag and auto-opens the create modal so the user doesn't lose their intent.
+ */
+let __pendingCreateAfterLogin = false;
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -31,6 +42,7 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const [modalVisible, setModalVisible] = useState(false);
+  const prevUserRef = useRef(user);
 
   // ─── Load family trees on mount / uid change (Requirements: 2.4) ──────────
   useEffect(() => {
@@ -38,6 +50,17 @@ export default function HomeScreen() {
       loadFamilyTrees(user.uid);
     }
   }, [user?.uid, loadFamilyTrees]);
+
+  // ─── Post-login redirect ───────────────────────────────────────────────────
+  // Detects when user transitions from null → defined. If __pendingCreateAfterLogin
+  // is set, auto-open the create modal so the user doesn't lose their intent.
+  useEffect(() => {
+    if (user && !prevUserRef.current && __pendingCreateAfterLogin) {
+      __pendingCreateAfterLogin = false;
+      setModalVisible(true);
+    }
+    prevUserRef.current = user;
+  }, [user]);
 
   // ─── Memoized callbacks ────────────────────────────────────────────────────
 
@@ -57,10 +80,15 @@ export default function HomeScreen() {
     [createFamilyTree, user?.uid],
   );
 
-  /** Requirement 1.4 / 1.5 — open modal */
+  /** Soft auth gate: redirect to login when unauthenticated. */
   const handleOpenModal = useCallback(() => {
+    if (!user) {
+      __pendingCreateAfterLogin = true;
+      router.push('/login');
+      return;
+    }
     setModalVisible(true);
-  }, []);
+  }, [user, router]);
 
   // ─── FlatList renderer ─────────────────────────────────────────────────────
 
@@ -82,7 +110,7 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safeArea}>
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <HomeHeader
-          actionIcon={hasTrees ? 'add' : 'notifications-outline'}
+          actionIcon={hasTrees ? 'add' : undefined}
           onActionPress={hasTrees ? handleOpenModal : undefined}
         />
 

@@ -8,11 +8,12 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { ThemedText } from '@/components/themed-text';
-import { AsalUsulColors, Radii, Shadows, Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { UIText } from '@/components/ui/text';
+import { AsalUsulColors, Radii, Spacing } from '@/constants/theme';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -46,17 +47,17 @@ export function EmptyTreeState({ onAddFirstMember }: EmptyTreeStateProps) {
 
       {/* Heading — stagger delay 80 ms (Requirement 3.1) */}
       <Animated.View entering={FadeInDown.duration(400).delay(80)}>
-        <ThemedText type="subtitle" style={styles.heading}>
+        <UIText variant="h3" style={styles.heading}>
           Mulai Pohon Keluargamu
-        </ThemedText>
+        </UIText>
       </Animated.View>
 
       {/* Explanatory copy — stagger delay 160 ms (Requirement 3.1) */}
       <Animated.View entering={FadeInDown.duration(400).delay(160)}>
-        <ThemedText type="default" style={styles.body}>
+        <UIText variant="p" style={styles.body}>
           Tambahkan dirimu sebagai anggota pertama untuk memulai perjalanan
           silsilah keluarga.
-        </ThemedText>
+        </UIText>
       </Animated.View>
 
       {/* CTA button — stagger delay 240 ms (Requirements 3.2, 3.3) */}
@@ -64,16 +65,12 @@ export function EmptyTreeState({ onAddFirstMember }: EmptyTreeStateProps) {
         entering={FadeInDown.duration(400).delay(240)}
         style={styles.ctaWrapper}
       >
-        <Pressable
+        <Button
+          label="Tambah Anggota Pertama"
           onPress={onAddFirstMember}
-          style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
-          accessibilityRole="button"
-          accessibilityLabel="Tambah Anggota Pertama"
-        >
-          <ThemedText type="default" style={styles.ctaLabel}>
-            Tambah Anggota Pertama
-          </ThemedText>
-        </Pressable>
+          variant="default"
+          size="default"
+        />
       </Animated.View>
     </View>
   );
@@ -100,34 +97,13 @@ const styles = StyleSheet.create({
   heading: {
     textAlign: 'center',
     color: AsalUsulColors.textHeading,
-    fontSize: 24,
-    lineHeight: 32,
   },
   body: {
     textAlign: 'center',
     color: AsalUsulColors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
   },
   ctaWrapper: {
     width: '100%',
     marginTop: Spacing.two,
-  },
-  cta: {
-    backgroundColor: AsalUsulColors.primary,
-    borderRadius: Radii.md,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    ...Shadows.button,
-  },
-  ctaPressed: {
-    opacity: 0.85,
-  },
-  ctaLabel: {
-    color: AsalUsulColors.textOnPrimary,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '600',
   },
 });

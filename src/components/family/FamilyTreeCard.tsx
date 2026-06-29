@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { AsalUsulColors, Radii, Shadows } from '@/constants/theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Card } from '@/components/ui/card';
+import { UIText } from '@/components/ui/text';
+import { AsalUsulColors, Radii } from '@/constants/theme';
 import { FamilyTree } from '@/types/familyTree';
 import { formatRelativeDate } from '@/utils/familyTreeUtils';
 
@@ -30,42 +32,44 @@ export function FamilyTreeCard({ item, onPress }: FamilyTreeCardProps) {
       onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel={item.name}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={({ pressed }) => [pressed && styles.cardPressed]}
     >
-      {/* Left avatar */}
-      <View style={styles.avatar}>
+      <Card variant="default" style={styles.card}>
+        {/* Left avatar */}
+        <View style={styles.avatar}>
+          <Ionicons
+            name="git-network-outline"
+            size={24}
+            color={AsalUsulColors.primary}
+          />
+        </View>
+
+        {/* Content */}
+        <View style={styles.content}>
+          <UIText
+            variant="h3"
+            style={styles.name}
+            numberOfLines={1}
+          >
+            {item.name}
+          </UIText>
+
+          <UIText variant="small" style={styles.memberCount}>
+            {item.totalMembers} Anggota
+          </UIText>
+
+          <UIText variant="small" style={styles.date}>
+            {formatRelativeDate(item.createdAt)}
+          </UIText>
+        </View>
+
+        {/* Right chevron */}
         <Ionicons
-          name="git-network-outline"
-          size={24}
-          color={AsalUsulColors.primary}
+          name="chevron-forward"
+          size={20}
+          color={AsalUsulColors.textMuted}
         />
-      </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        <ThemedText
-          type="subtitle"
-          style={styles.name}
-          numberOfLines={1}
-        >
-          {item.name}
-        </ThemedText>
-
-        <ThemedText type="small" style={styles.memberCount}>
-          {item.totalMembers} Anggota
-        </ThemedText>
-
-        <ThemedText type="small" style={styles.date}>
-          {formatRelativeDate(item.createdAt)}
-        </ThemedText>
-      </View>
-
-      {/* Right chevron */}
-      <Ionicons
-        name="chevron-forward"
-        size={20}
-        color={AsalUsulColors.textMuted}
-      />
+      </Card>
     </Pressable>
   );
 }
@@ -76,12 +80,9 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: Radii.lg,
-    backgroundColor: AsalUsulColors.backgroundCard,
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 12,
-    ...Shadows.card,
   },
   cardPressed: {
     opacity: 0.85,
@@ -99,8 +100,6 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   name: {
-    fontSize: 18,
-    lineHeight: 24,
     color: AsalUsulColors.textHeading,
   },
   memberCount: {

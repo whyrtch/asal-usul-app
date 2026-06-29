@@ -42,22 +42,20 @@ function RootLayoutNav() {
   }, [loading]);
 
   // While auth state is loading, render nothing (splash screen is still visible).
-  // Stack.Protected will handle routing once loading resolves.
   if (loading) {
     return null;
   }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/* Only accessible when NOT logged in (Requirements: 3.2, 3.3) */}
-      <Stack.Protected guard={!isLoggedIn}>
-        <Stack.Screen name="login" />
-      </Stack.Protected>
+      {/* Soft auth gate: tabs are always visible.
+          Unauthenticated users see the home screen and are prompted to sign in
+          only when they attempt a write action (create family tree, etc.). */}
+      <Stack.Screen name="(tabs)" />
 
-      {/* Only accessible when logged in (Requirements: 3.2, 3.3) */}
-      <Stack.Protected guard={isLoggedIn}>
-        <Stack.Screen name="(tabs)" />
-      </Stack.Protected>
+      {/* Login screen — presented as a modal when the user needs to authenticate.
+          navigated to via router.push('/login') from auth-gated actions. */}
+      <Stack.Screen name="login" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }

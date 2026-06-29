@@ -1,25 +1,35 @@
 /**
  * SettingScreen — Redesigned settings page.
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
+ *
+ * Soft auth gate: shows account section only when logged in.
+ * Unauthenticated users see a "Masuk" prompt instead.
  */
 
+import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LogoHeader } from '@/components/logo-header';
-import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
 import { LogoutButton } from '@/components/ui/logout-button';
 import { SectionTitle } from '@/components/ui/section-title';
 import { SettingsCard } from '@/components/ui/settings-card';
+import { UIText } from '@/components/ui/text';
 import { VersionInfo } from '@/components/ui/version-info';
 import { AsalUsulColors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 
 export default function SettingScreen() {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const router = useRouter();
 
   async function handleLogout() {
     await signOut();
+  }
+
+  function handleLogin() {
+    router.push('/login');
   }
 
   return (
@@ -38,19 +48,13 @@ export default function SettingScreen() {
         <View style={styles.section}>
           <SectionTitle title="TENTANG APLIKASI" />
           <SettingsCard>
-            <ThemedText
-              type="default"
-              style={styles.bodyText}
-            >
+            <UIText variant="p" style={styles.bodyText}>
               AsalUsul membantu keluarga mendokumentasikan sejarah, silsilah, dan warisan keluarga dalam satu pohon digital modern.
-            </ThemedText>
+            </UIText>
             <View style={styles.divider} />
-            <ThemedText
-              type="small"
-              style={styles.missionText}
-            >
+            <UIText variant="muted" style={styles.missionText}>
               Kami percaya setiap keluarga memiliki cerita yang layak untuk dikenang dan diwariskan.
-            </ThemedText>
+            </UIText>
           </SettingsCard>
         </View>
 
@@ -62,10 +66,26 @@ export default function SettingScreen() {
           </SettingsCard>
         </View>
 
-        {/* ── Section 4: Account / Logout ───────────────────────────────── */}
+        {/* ── Section 4: Account ────────────────────────────────────────── */}
         <View style={styles.section}>
           <SectionTitle title="AKUN" />
-          <LogoutButton onPress={handleLogout} />
+          {user ? (
+            <LogoutButton onPress={handleLogout} />
+          ) : (
+            <SettingsCard>
+              <UIText variant="p" style={styles.loginPromptText}>
+                Masuk untuk menyimpan dan mengelola pohon keluarga Anda.
+              </UIText>
+              <Button
+                label="Masuk dengan Google"
+                onPress={handleLogin}
+                variant="default"
+                size="default"
+                icon="logo-google"
+                style={styles.loginButton}
+              />
+            </SettingsCard>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -105,5 +125,14 @@ const styles = StyleSheet.create({
     color: AsalUsulColors.textMuted,
     fontStyle: 'italic',
     lineHeight: 22,
+  },
+  loginPromptText: {
+    color: AsalUsulColors.textMuted,
+    marginBottom: Spacing.three,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  loginButton: {
+    width: '100%',
   },
 });

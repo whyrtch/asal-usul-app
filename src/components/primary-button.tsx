@@ -1,13 +1,7 @@
-import {
-    ActivityIndicator,
-    Pressable,
-    StyleSheet,
-    type StyleProp,
-    type ViewStyle,
-} from 'react-native';
+import { type StyleProp, type ViewStyle } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { AsalUsulColors, Radii, Shadows } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import type { ButtonVariant } from '@/components/ui/button';
 
 export interface PrimaryButtonProps {
   label: string;
@@ -18,6 +12,17 @@ export interface PrimaryButtonProps {
   style?: StyleProp<ViewStyle>;
 }
 
+const VARIANT_MAP: Record<'filled' | 'outline', ButtonVariant> = {
+  filled: 'default',
+  outline: 'outline',
+};
+
+/**
+ * PrimaryButton — convenience wrapper around the unified `Button` primitive.
+ *
+ * Maps the legacy `filled` / `outline` variants to `default` / `outline`
+ * Button variants. All other props pass through directly.
+ */
 export function PrimaryButton({
   label,
   onPress,
@@ -26,71 +31,15 @@ export function PrimaryButton({
   variant = 'filled',
   style,
 }: PrimaryButtonProps) {
-  const isDisabled = disabled || isLoading;
-  const isFilled = variant === 'filled';
-
-  function handlePress() {
-    if (isDisabled) return;
-    onPress();
-  }
-
   return (
-    <Pressable
-      onPress={handlePress}
-      accessibilityRole="button"
-      accessibilityState={{
-        disabled: isDisabled,
-        busy: isLoading,
-      }}
-      style={[
-        styles.base,
-        isFilled ? styles.filled : styles.outline,
-        isDisabled && styles.disabled,
-        style,
-      ]}
-    >
-      {isLoading ? (
-        <ActivityIndicator
-          color={isFilled ? AsalUsulColors.textOnPrimary : AsalUsulColors.primary}
-        />
-      ) : (
-        <ThemedText
-          type="smallBold"
-          style={isFilled ? styles.labelFilled : styles.labelOutline}
-        >
-          {label}
-        </ThemedText>
-      )}
-    </Pressable>
+    <Button
+      label={label}
+      onPress={onPress}
+      isLoading={isLoading}
+      disabled={disabled}
+      variant={VARIANT_MAP[variant]}
+      size="default"
+      style={style}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: Radii.pill,
-    paddingVertical: 16,
-    minHeight: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  filled: {
-    backgroundColor: AsalUsulColors.primary,
-    borderColor: 'transparent',
-    ...Shadows.button,
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderColor: AsalUsulColors.primary,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  labelFilled: {
-    color: AsalUsulColors.textOnPrimary,
-  },
-  labelOutline: {
-    color: AsalUsulColors.primary,
-  },
-});

@@ -14,6 +14,7 @@
  */
 
 import * as WebBrowser from 'expo-web-browser';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Pressable,
@@ -39,6 +40,7 @@ const PRIVACY_URL = 'https://asalusul.app/privacy';
 
 export default function LoginScreen() {
   const { signInWithGoogle } = useAuth();
+  const router = useRouter();
 
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -70,6 +72,11 @@ export default function LoginScreen() {
 
     try {
       await signInWithGoogle();
+      // Soft auth gate: after successful sign-in, navigate back to the
+      // screen that triggered the login flow (e.g. home screen).
+      // If the user came from "Buat Sekarang", the home screen detects
+      // the auth transition and auto-opens the create modal.
+      router.back();
     } catch (err: unknown) {
       // Requirement 2.8: surface Indonesian error message
       const message =
@@ -84,7 +91,7 @@ export default function LoginScreen() {
       }
       setIsSigningIn(false);
     }
-  }, [isSigningIn, signInWithGoogle]);
+  }, [isSigningIn, signInWithGoogle, router]);
 
   // ── Link handlers ───────────────────────────────────────────────────────────
 
